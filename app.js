@@ -1201,6 +1201,698 @@ const cards = [
     ],
     answer: "小数位表示命题之间的从属和注释关系（逻辑权重）",
     explanation: "维特根斯坦用小数编号表示命题的逻辑层级：n.1 是对 n 的注释，依此类推。"
+  },
+  {
+    id: "jp-vocab-009",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "input",
+    prompt: "写出「教」的日语动词ます形（假名即可）。",
+    accepted: ["おしえます", "教えます"],
+    answer: "教えます",
+    speak: "日本語を教えます。",
+    explanation: "教えます（おしえます）表示教授。例：先生は日本語を教えます。"
+  },
+  {
+    id: "jp-vocab-010",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "choice",
+    prompt: "「ひま」最贴近哪一个意思？",
+    options: ["空闲", "忙碌", "便宜", "危险"],
+    answer: "空闲",
+    speak: "きょうは ひまです。",
+    explanation: "暇（ひま）是「空闲」，反义是 忙しい（いそがしい）。"
+  },
+  {
+    id: "jp-vocab-011",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "input",
+    prompt: "写出「便利」的反义词（假名即可）。",
+    accepted: ["ふべん", "不便"],
+    answer: "不便",
+    speak: "ここは ちょっと ふべんです。",
+    explanation: "便利（べんり）⇔ 不便（ふべん）。"
+  },
+  {
+    id: "jp-grammar-010",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「公园里有一只狗」应该选哪一句？",
+    options: [
+      "公園に犬がいます。",
+      "公園に犬があります。",
+      "公園で犬がいます。",
+      "公園は犬がいます。"
+    ],
+    answer: "公園に犬がいます。",
+    speak: "公園に犬がいます。",
+    explanation: "有生命的（人、动物）用 います；无生命的用 あります。存在地点用 に。"
+  },
+  {
+    id: "jp-grammar-011",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "input",
+    prompt: "把「行きます」改成「昨天没去」的形式（过去否定）。",
+    accepted: ["行きませんでした", "いきませんでした"],
+    answer: "行きませんでした",
+    speak: "きのうは行きませんでした。",
+    explanation: "ます的过去否定：ます -> ませんでした。行きます -> 行きませんでした。"
+  },
+  {
+    id: "jp-grammar-012",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「这次旅行很开心」（过去）最自然的是？",
+    options: [
+      "旅行は楽しかったです。",
+      "旅行は楽しいでした。",
+      "旅行は楽しくでした。",
+      "旅行は楽しいかったです。"
+    ],
+    answer: "旅行は楽しかったです。",
+    speak: "旅行は楽しかったです。",
+    explanation: "い形容词过去式：楽しい -> 楽しかったです（不是「楽しいでした」）。"
+  },
+  {
+    id: "jp-grammar-013",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「这里很安静」应该选哪一句？",
+    options: [
+      "ここは静かです。",
+      "ここは静かいです。",
+      "ここは静くです。",
+      "ここは静かいでした。"
+    ],
+    answer: "ここは静かです。",
+    speak: "ここは静かです。",
+    explanation: "静か 是な形容词，直接 + です：静かです（没有 い）。"
+  },
+  {
+    id: "jp-grammar-014",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「我喜欢日本料理」最自然的是？",
+    options: [
+      "日本料理が好きです。",
+      "日本料理を好きです。",
+      "日本料理に好きです。",
+      "日本料理は好きます。"
+    ],
+    answer: "日本料理が好きです。",
+    speak: "日本料理が好きです。",
+    explanation: "好き・嫌い・上手・下手 前面的对象用 が。"
+  },
+  {
+    id: "jp-sentence-007",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：我想要一台新电脑。",
+    tokens: ["新しい", "パソコンが", "ほしいです"],
+    answer: ["新しい", "パソコンが", "ほしいです"],
+    speak: "新しいパソコンがほしいです。",
+    explanation: "想要某物：〜が ほしいです。形容词 新しい 直接修饰名词。"
+  },
+  {
+    id: "jp-sentence-008",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：一起去看电影吧。",
+    tokens: ["いっしょに", "映画を", "見ましょう"],
+    answer: ["いっしょに", "映画を", "見ましょう"],
+    speak: "いっしょに映画を見ましょう。",
+    explanation: "提议一起做某事：动词ます形去ます + ましょう。"
+  },
+  {
+    id: "jp-sentence-009",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：周末和家人去旅行。",
+    tokens: ["しゅうまつ", "家族と", "旅行に", "行きます"],
+    answer: ["しゅうまつ", "家族と", "旅行に", "行きます"],
+    speak: "しゅうまつ、家族と旅行に行きます。",
+    explanation: "去做某活动：〜に行きます。旅行に行きます = 去旅行。"
+  },
+  {
+    id: "jp-reading-007",
+    track: "japanese",
+    module: "jp-reading",
+    type: "choice",
+    prompt: "根据课文，田中さん怎么去公司？",
+    context: {
+      title: "小课文：田中さんの一日",
+      body: [
+        "田中さんは毎朝6時半に起きます。",
+        "朝ごはんを食べてから、駅まで歩いて、電車で会社へ行きます。",
+        "仕事は9時に始まって、6時に終わります。"
+      ],
+      translation: "田中每天早上六点半起床。吃完早饭后，走到车站，坐电车去公司。工作九点开始，六点结束。",
+      notes: ["〜てから 表示「…之后」", "まで 表示「到…为止」", "で 表示交通手段：電車で"]
+    },
+    options: ["先走到车站，再坐电车去", "开车去", "骑自行车去", "坐飞机去"],
+    answer: "先走到车站，再坐电车去",
+    speak: "朝ごはんを食べてから、駅まで歩いて、電車で会社へ行きます。",
+    explanation: "第二句：駅まで歩いて、電車で会社へ行きます——先走到车站再坐电车。",
+    tags: ["reading", "te-form", "transport"]
+  },
+  {
+    id: "jp-reading-008",
+    track: "japanese",
+    module: "jp-reading",
+    type: "input",
+    prompt: "根据课文填空：朝ごはんを___から、駅まで歩きます。",
+    context: {
+      title: "小课文：田中さんの一日",
+      body: [
+        "田中さんは毎朝6時半に起きます。",
+        "朝ごはんを食べてから、駅まで歩いて、電車で会社へ行きます。",
+        "仕事は9時に始まって、6時に終わります。"
+      ],
+      translation: "田中每天早上六点半起床。吃完早饭后，走到车站，坐电车去公司。工作九点开始，六点结束。",
+      notes: ["食べる 的て形是 食べて", "〜てから 表示「…之后」"]
+    },
+    accepted: ["食べて", "たべて"],
+    answer: "食べて",
+    speak: "朝ごはんを食べてから、駅まで歩きます。",
+    explanation: "食べる -> 食べて；〜てから 表示前一动作完成后再做下一件。",
+    tags: ["reading", "te-form", "verb"]
+  },
+  {
+    id: "jp-reading-009",
+    track: "japanese",
+    module: "jp-reading",
+    type: "arrange",
+    prompt: "组句：工作九点开始，六点结束。",
+    context: {
+      title: "长句骨架",
+      body: ["仕事は9時に始まって、6時に終わります。"],
+      translation: "工作九点开始，六点结束。",
+      notes: ["始まって 是 始まる 的て形", "时间点用 に：9時に", "て形连接两个动作"]
+    },
+    tokens: ["仕事は", "9時に始まって", "6時に終わります"],
+    answer: ["仕事は", "9時に始まって", "6時に終わります"],
+    speak: "仕事は9時に始まって、6時に終わります。",
+    explanation: "始まる -> 始まって；用て形把「开始」和「结束」连成一句。",
+    tags: ["reading", "long-sentence", "te-form"]
+  },
+  {
+    id: "jp-reading-010",
+    track: "japanese",
+    module: "jp-reading",
+    type: "self",
+    prompt: "用日语说说你的一天：几点起床、有没有吃早饭、怎么去学校或公司。",
+    subprompt: "说完后按流利度评分。",
+    context: {
+      title: "小课文：田中さんの一日",
+      body: [
+        "田中さんは毎朝6時半に起きます。",
+        "朝ごはんを食べてから、駅まで歩いて、電車で会社へ行きます。",
+        "仕事は9時に始まって、6時に終わります。"
+      ],
+      translation: "田中每天早上六点半起床。吃完早饭后，走到车站，坐电车去公司。工作九点开始，六点结束。",
+      notes: ["可以套用课文的句型", "重点练 〜てから 和 で（交通手段）"]
+    },
+    checklist: ["是否说出起床时间", "是否用了〜てから 或 で（交通手段）", "是否说了到达的地方"],
+    sample: "わたしは毎朝7時に起きます。朝ごはんを食べてから、電車で学校へ行きます。",
+    explanation: "把课文换成自己的信息说一遍，是把句型变成自己能用的最快方式。",
+    tags: ["reading", "speaking", "te-form"]
+  },
+  {
+    id: "en-civil-009",
+    track: "english",
+    module: "en-civil",
+    type: "choice",
+    prompt: "“Excavation” most often means:",
+    options: [
+      "digging out soil or rock, e.g. for a foundation",
+      "pouring the final layer of asphalt",
+      "painting a steel beam",
+      "surveying the property line"
+    ],
+    answer: "digging out soil or rock, e.g. for a foundation",
+    speak: "Excavation began before the foundation was laid.",
+    explanation: "excavation 是开挖（土方）；动词 excavate。"
+  },
+  {
+    id: "en-civil-010",
+    track: "english",
+    module: "en-civil",
+    type: "input",
+    prompt: "Translate into English: 地基 / 基础（建筑）",
+    accepted: ["foundation"],
+    answer: "foundation",
+    speak: "A deep foundation was required on the soft ground.",
+    explanation: "foundation 是基础/地基；deep foundation 深基础，shallow foundation 浅基础。"
+  },
+  {
+    id: "en-civil-011",
+    track: "english",
+    module: "en-civil",
+    type: "choice",
+    prompt: "A “load-bearing wall” is a wall that:",
+    options: [
+      "supports the weight of the structure above it",
+      "only divides rooms and carries no load",
+      "is always made of glass",
+      "is used only for decoration"
+    ],
+    answer: "supports the weight of the structure above it",
+    speak: "Do not remove a load-bearing wall without proper support.",
+    explanation: "load-bearing wall 是承重墙，拆除前必须有临时支撑。"
+  },
+  {
+    id: "en-civil-012",
+    track: "english",
+    module: "en-civil",
+    type: "choice",
+    prompt: "“Durability” of a material refers to its ability to:",
+    options: [
+      "resist wear and deterioration over time",
+      "change color quickly",
+      "conduct electricity",
+      "float on water"
+    ],
+    answer: "resist wear and deterioration over time",
+    speak: "Durability is a key requirement for marine structures.",
+    explanation: "durability 是耐久性，指材料长期抵抗磨损和劣化的能力。"
+  },
+  {
+    id: "en-ai-009",
+    track: "english",
+    module: "en-ai",
+    type: "choice",
+    prompt: "In training, one “epoch” is:",
+    options: [
+      "one full pass through the entire training dataset",
+      "a single neuron in the network",
+      "the final accuracy score",
+      "the physical size of the model"
+    ],
+    answer: "one full pass through the entire training dataset",
+    speak: "The model was trained for fifty epochs.",
+    explanation: "epoch 是「轮」：完整遍历一次训练集。"
+  },
+  {
+    id: "en-ai-010",
+    track: "english",
+    module: "en-ai",
+    type: "input",
+    prompt: "Fill in the term: The function that measures how wrong the predictions are is the ___ function.",
+    accepted: ["loss", "cost"],
+    answer: "loss",
+    speak: "Training minimizes the loss function.",
+    explanation: "loss / cost function 损失函数；训练就是让它变小。"
+  },
+  {
+    id: "en-ai-011",
+    track: "english",
+    module: "en-ai",
+    type: "choice",
+    prompt: "“Regularization” is mainly used to:",
+    options: [
+      "reduce overfitting",
+      "speed up the GPU",
+      "label the training data",
+      "increase the learning rate"
+    ],
+    answer: "reduce overfitting",
+    speak: "We added dropout as a form of regularization.",
+    explanation: "正则化（如 dropout、weight decay）主要用来抑制过拟合。"
+  },
+  {
+    id: "en-ielts-007",
+    track: "english",
+    module: "en-ielts",
+    type: "choice",
+    prompt: "学术写作里表示转折，句首更合适的是：",
+    options: [
+      "However, this approach has some limitations.",
+      "Beside, this approach has some limitations.",
+      "In other hand, this approach has some limitations.",
+      "Although so, this approach has some limitations."
+    ],
+    answer: "However, this approach has some limitations.",
+    speak: "However, this approach has some limitations.",
+    explanation: "转折常用 However（后接逗号）；注意 besides 不是 beside，且没有 in other hand。"
+  },
+  {
+    id: "en-ielts-008",
+    track: "english",
+    module: "en-ielts",
+    type: "input",
+    prompt: "把 “a big increase” 改成更学术的说法。",
+    accepted: ["a significant increase", "a substantial increase", "a considerable increase", "a sharp increase"],
+    answer: "a significant increase",
+    speak: "There was a significant increase in demand.",
+    explanation: "significant / substantial / considerable / sharp + increase 都比 big 更学术。"
+  },
+  {
+    id: "en-ielts-009",
+    track: "english",
+    module: "en-ielts",
+    type: "self",
+    prompt: "Task 1 口语 30 秒：用一句话概括一张折线图的总体趋势（例如气温逐年上升）。",
+    subprompt: "说完后按清晰度评分。",
+    checklist: [
+      "是否先给 overview（总体趋势）",
+      "是否用了 rise / increase / upward trend 等词",
+      "是否提到时间范围"
+    ],
+    sample: "Overall, the temperature showed an upward trend, rising steadily between 2000 and 2020.",
+    speak: "Overall, the temperature showed an upward trend, rising steadily between 2000 and 2020.",
+    explanation: "Task 1 先说总体趋势（overview），再用一个趋势动词和时间范围支撑。"
+  },
+  {
+    id: "en-reading-007",
+    track: "english",
+    module: "en-reading",
+    type: "choice",
+    prompt: "According to the sentence, why is drainage important on slopes?",
+    context: {
+      title: "Civil Engineering Long Sentence",
+      body: [
+        "Proper drainage is essential on slopes, because water that builds up behind a retaining wall increases the pressure on it and can eventually cause the wall to fail."
+      ],
+      translation: "在边坡上做好排水非常重要，因为积聚在挡土墙后的水会增大对墙体的压力，最终可能导致墙体破坏。",
+      notes: ["build up behind = 在…后面积聚", "pressure = 压力", "cause ... to fail = 导致…破坏"]
+    },
+    options: [
+      "Water building up behind the wall increases pressure and may cause failure.",
+      "The wall needs to be repainted regularly.",
+      "Drainage makes the concrete cheaper.",
+      "It speeds up the traffic on the slope."
+    ],
+    answer: "Water building up behind the wall increases pressure and may cause failure.",
+    speak: "Proper drainage is essential on slopes, because water that builds up behind a retaining wall increases the pressure on it and can eventually cause the wall to fail.",
+    explanation: "because 后给出原因：积水增大压力，可能导致墙体破坏。",
+    tags: ["reading", "civil", "long-sentence"]
+  },
+  {
+    id: "en-reading-008",
+    track: "english",
+    module: "en-reading",
+    type: "input",
+    prompt: "Fill in the academic verb: Engineers ___ the bridge regularly to make sure it is still safe.",
+    context: {
+      title: "Civil Engineering Sentence",
+      body: [
+        "Engineers inspect the bridge regularly to make sure it is still safe and to find small problems early."
+      ],
+      translation: "工程师定期检查桥梁，以确保它仍然安全，并尽早发现小问题。",
+      notes: ["inspect = 检查", "regularly = 定期地", "find problems early = 尽早发现问题"]
+    },
+    accepted: ["inspect", "monitor", "check"],
+    answer: "inspect",
+    speak: "Engineers inspect the bridge regularly to make sure it is still safe.",
+    explanation: "inspect / monitor / check 都可用于「定期检查」结构。",
+    tags: ["reading", "civil", "academic-verb"]
+  },
+  {
+    id: "en-reading-009",
+    track: "english",
+    module: "en-reading",
+    type: "arrange",
+    prompt: "Rebuild the sentence: 尽管准确率很高，模型却无法泛化到未见过的环境。",
+    context: {
+      title: "Concessive Sentence (AI)",
+      body: ["Despite achieving high accuracy, the model failed to generalize to unseen environments."],
+      translation: "尽管达到了很高的准确率，模型却无法泛化到未见过的环境。",
+      notes: ["Despite + 名词/动名词 表示让步", "generalize to = 泛化到", "unseen environments = 未见过的环境"]
+    },
+    tokens: ["Despite achieving high accuracy", "the model failed", "to generalize", "to unseen environments"],
+    answer: ["Despite achieving high accuracy", "the model failed", "to generalize", "to unseen environments"],
+    speak: "Despite achieving high accuracy, the model failed to generalize to unseen environments.",
+    explanation: "Despite 后接名词或动名词（achieving），不接句子；这是论文里承认局限的常用句式。",
+    tags: ["reading", "ai", "long-sentence"]
+  },
+  {
+    id: "en-reading-010",
+    track: "english",
+    module: "en-reading",
+    type: "self",
+    prompt: "Read the long sentence aloud, then summarize it in one English sentence.",
+    subprompt: "说完后按概括是否准确评分。",
+    context: {
+      title: "AI + Engineering Sentence",
+      body: [
+        "Because sensor data can be noisy, the team applied a filter before feeding it into the model, which improved the reliability of the predictions."
+      ],
+      translation: "由于传感器数据可能含噪声，团队在把数据送入模型之前先做了滤波，这提高了预测的可靠性。",
+      notes: ["noisy = 含噪声的", "apply a filter = 滤波", "reliability = 可靠性"]
+    },
+    checklist: ["是否读出整句", "是否用一句英文概括", "是否包含 filter / reliable / prediction 之一"],
+    sample: "The team filtered noisy sensor data to make the model's predictions more reliable.",
+    speak: "Because sensor data can be noisy, the team applied a filter before feeding it into the model, which improved the reliability of the predictions.",
+    explanation: "先读懂长句，再压成一句话，是精读 + 输出的好练习。",
+    tags: ["reading", "ai", "summary"]
+  },
+  {
+    id: "en-reading-011",
+    track: "english",
+    module: "en-reading",
+    type: "choice",
+    prompt: "What is the main benefit described in the sentence?",
+    context: {
+      title: "AI + Maintenance Sentence",
+      body: [
+        "By combining sensor data with machine learning, the system can predict equipment failures before they happen, which helps reduce maintenance costs."
+      ],
+      translation: "通过把传感器数据与机器学习结合，系统可以在设备故障发生前进行预测，这有助于降低维护成本。",
+      notes: ["combine A with B = 把 A 与 B 结合", "predict failures = 预测故障", "maintenance costs = 维护成本"]
+    },
+    options: [
+      "Predicting failures early to reduce maintenance costs.",
+      "Making the equipment heavier.",
+      "Changing the color of the sensors.",
+      "Increasing the energy the system uses."
+    ],
+    answer: "Predicting failures early to reduce maintenance costs.",
+    speak: "By combining sensor data with machine learning, the system can predict equipment failures before they happen, which helps reduce maintenance costs.",
+    explanation: "which helps reduce maintenance costs 点明主要好处：提前预测以降本。",
+    tags: ["reading", "ai", "civil", "long-sentence"]
+  },
+  {
+    id: "tlp-concept-006",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "input",
+    prompt: "用两个字填空：世界是___的总和。",
+    accepted: ["事实"],
+    answer: "事实",
+    explanation: "命题 1：世界是事实的总和（不是物的总和）。"
+  },
+  {
+    id: "tlp-concept-007",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "在《逻辑哲学论》体系里，「简单对象」的作用是：",
+    options: ["充当构成事态的基本要素", "表达一种情绪", "下达道德命令", "记录观察数据"],
+    answer: "充当构成事态的基本要素",
+    explanation: "对象是不可再分的基本要素，它们的组合构成可能的事态。"
+  },
+  {
+    id: "tlp-concept-008",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "按入门理解，「思想」大致是：",
+    options: [
+      "事态的逻辑图像（由有意义的命题表达）",
+      "一种纯粹的情绪",
+      "一条物理定律",
+      "一种宗教信仰"
+    ],
+    answer: "事态的逻辑图像（由有意义的命题表达）",
+    explanation: "思想是事态的逻辑图像，可由有意义的命题表达出来。"
+  },
+  {
+    id: "tlp-concept-009",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "维特根斯坦认为哲学应当是：",
+    options: [
+      "澄清思想的活动，而不是一套学说",
+      "一门经验科学",
+      "一套伦理规范",
+      "一种文学创作"
+    ],
+    answer: "澄清思想的活动，而不是一套学说",
+    explanation: "哲学不是理论体系，而是把可说的说清楚、为思想划界的活动。"
+  },
+  {
+    id: "tlp-relation-006",
+    track: "tractatus",
+    module: "tlp-relation",
+    type: "choice",
+    prompt: "在命题里，一个「名称(name)」对应现实中的：",
+    options: ["对象", "事实", "整个世界", "真理"],
+    answer: "对象",
+    explanation: "名称指称对象；名称的组合（命题）描画事态。"
+  },
+  {
+    id: "tlp-relation-007",
+    track: "tractatus",
+    module: "tlp-relation",
+    type: "choice",
+    prompt: "一个有意义的命题，必须能够：",
+    options: ["为真或为假（有两种可能）", "永远为真", "永远为假", "保证说话者道德正确"],
+    answer: "为真或为假（有两种可能）",
+    explanation: "有意义的命题描画一种可能的事态，因此有真假条件。"
+  },
+  {
+    id: "tlp-relation-008",
+    track: "tractatus",
+    module: "tlp-relation",
+    type: "choice",
+    prompt: "下面哪一个不描述世界中的事实？",
+    options: ["重言式", "天气预报", "实验报告", "新闻报道"],
+    answer: "重言式",
+    explanation: "重言式恒真、矛盾式恒假，二者都不描述世界中的具体事实。"
+  },
+  {
+    id: "tlp-relation-009",
+    track: "tractatus",
+    module: "tlp-relation",
+    type: "choice",
+    prompt: "重言式提供的、关于世界的信息量是：",
+    options: ["零", "很大", "中等", "无法确定"],
+    answer: "零",
+    explanation: "重言式不排除任何可能情况，所以关于世界的信息量为零。"
+  },
+  {
+    id: "tlp-passage-005",
+    track: "tractatus",
+    module: "tlp-passage",
+    type: "choice",
+    prompt: "这段强调的对应关系是？",
+    context: {
+      title: "入门段落：名称与命题",
+      body: [
+        "在最简单的层面上，名称指称对象。把名称按一定结构组合成命题，就像把对象组合成事态。命题之所以有意义，是因为它的结构对应着事态的结构。"
+      ],
+      translation: "入门改写，非原文引用：重点是「名称↔对象、命题↔事态」的结构对应。",
+      notes: ["名称 ↔ 对象", "命题 ↔ 事态", "结构对应是关键"]
+    },
+    options: [
+      "名称↔对象，命题↔事态",
+      "名称↔颜色，命题↔声音",
+      "名称↔价格，命题↔重量",
+      "名称↔作者，命题↔日期"
+    ],
+    answer: "名称↔对象，命题↔事态",
+    explanation: "命题能描画事态，因为名称—对象、命题—事态之间存在结构对应。",
+    tags: ["passage", "name", "object"]
+  },
+  {
+    id: "tlp-passage-006",
+    track: "tractatus",
+    module: "tlp-passage",
+    type: "self",
+    prompt: "用自己的话讲讲「显示(showing)」和「说出(saying)」的区别，并举一个例子。",
+    subprompt: "说完后按清晰度评分。",
+    context: {
+      title: "入门段落：说出与显示",
+      body: [
+        "经验命题说出世界中成立了什么；但有些东西（如逻辑形式）不能被这样说出，只能在命题如何运作中显示出来。"
+      ],
+      translation: "入门改写，非原文引用。",
+      notes: ["说出：经验事实", "显示：逻辑形式", "举一个自己的例子"]
+    },
+    checklist: ["是否说清「说出」针对经验事实", "是否说清「显示」针对逻辑形式", "是否举了一个自己的例子"],
+    sample: "「书在桌子上」说出了一个事实；而「这句话有主语和谓语」这种逻辑结构本身不被说出，却在句子如何组成中显示出来。",
+    explanation: "能把「说出经验事实」和「显示逻辑结构」分开，就抓住了一个核心区分。",
+    tags: ["passage", "saying", "showing"]
+  },
+  {
+    id: "tlp-passage-007",
+    track: "tractatus",
+    module: "tlp-passage",
+    type: "choice",
+    prompt: "「下雨或不下雨」这个例子，想说明重言式：",
+    context: {
+      title: "入门段落：重言式",
+      body: [
+        "「今天下雨或者不下雨」无论天气如何都为真，所以它其实没告诉你今天的天气。这样的命题是重言式：它不描述世界，只展示逻辑本身。"
+      ],
+      translation: "入门改写，非原文引用。",
+      notes: ["重言式恒真", "不提供世界的信息", "与之相对的是矛盾式（恒假）"]
+    },
+    options: ["不提供关于世界的任何信息", "准确预报了天气", "在伦理上是对的", "是一条经验定律"],
+    answer: "不提供关于世界的任何信息",
+    explanation: "重言式无论世界如何都为真，因此对世界零信息，只展示逻辑结构。",
+    tags: ["passage", "tautology"]
+  },
+  {
+    id: "tlp-passage-008",
+    track: "tractatus",
+    module: "tlp-passage",
+    type: "input",
+    prompt: "填空：世界是事实的总和，而不是___的总和。",
+    context: {
+      title: "入门段落：事实而非物",
+      body: [
+        "维特根斯坦一开始就区分：世界是「发生的事情」的总和，而不是「东西」的清单。"
+      ],
+      translation: "对应命题 1.1 的入门理解。",
+      notes: ["事实 = 事情如何成立", "物 = 单个对象", "先抓住这个区分"]
+    },
+    accepted: ["物", "对象", "事物", "东西"],
+    answer: "物",
+    explanation: "命题 1.1：世界是事实的总和，而非物（things）的总和。",
+    tags: ["passage", "fact", "object"]
+  },
+  {
+    id: "tlp-reading-005",
+    track: "tractatus",
+    module: "tlp-reading",
+    type: "choice",
+    prompt: "对初学者，读《逻辑哲学论》较稳的做法是：",
+    options: [
+      "配合一本入门导读，边读边画概念关系",
+      "只读原文，不看任何解释",
+      "先背下所有命题编号",
+      "从最后一句往前读"
+    ],
+    answer: "配合一本入门导读，边读边画概念关系",
+    explanation: "本书压缩度极高，配合导读和概念图比硬啃原文更稳。"
+  },
+  {
+    id: "tlp-reading-006",
+    track: "tractatus",
+    module: "tlp-reading",
+    type: "self",
+    prompt: "解释：为什么全书最后落在「沉默」，而不是给出一套人生答案？",
+    subprompt: "说完后按清晰度评分。",
+    checklist: ["是否说到事实语言的界限", "是否说明哪类问题被排除在外", "是否避免把它误读为「什么都别说」"],
+    sample: "因为有意义的命题只能描画事实，像人生意义这类问题不在事实之内，所以不能被这样说出——沉默针对的是这类越界的问题，而不是叫人闭嘴。",
+    explanation: "「沉默」是对语言界限的标记，不是消极的禁令。"
+  },
+  {
+    id: "tlp-reading-007",
+    track: "tractatus",
+    module: "tlp-reading",
+    type: "choice",
+    prompt: "命题 6.54 的「梯子」比喻是指：",
+    options: [
+      "理解之后，要把这些命题本身像梯子一样扔掉",
+      "梯子是世界的基础结构",
+      "要永远背住每一条命题",
+      "梯子代表科学方法"
+    ],
+    answer: "理解之后，要把这些命题本身像梯子一样扔掉",
+    explanation: "读者借这些命题爬上去看清问题后，应认识到它们本身也要被超越——「爬上去后扔掉梯子」。"
   }
 ];
 
