@@ -1900,6 +1900,7 @@ function defaultState() {
   return {
     activeTrack: "japanese",
     activeModule: "all",
+    activeView: "practice",
     mode: "due",
     dailyGoal: 18,
     activeCommuteSegment: "platform",
@@ -1919,6 +1920,7 @@ function defaultState() {
     translationOpen: false,
     syncText: "",
     syncMessage: "",
+    toast: "",
     aiProxyUrl: "http://127.0.0.1:8799",
     aiProvider: "deepseek",
     aiMessage: "",
@@ -1941,20 +1943,21 @@ function loadState() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     const base = defaultState();
     if (!saved || typeof saved !== "object") return base;
-    return { ...base, ...saved, gitSync: { ...base.gitSync, ...(saved.gitSync || {}) }, queue: [], currentId: null };
+    return { ...base, ...saved, gitSync: { ...base.gitSync, ...(saved.gitSync || {}) }, queue: [], currentId: null, activeView: "practice" };
   } catch {
     return defaultState();
   }
 }
 
 function saveState() {
-  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, ...persisted } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }
 
 const app = typeof document !== "undefined" ? document.querySelector("#app") : null;
 let cloudSyncTimer = null;
 let cloudSyncInFlight = false;
+let toastTimer = null;
 
 function escapeHtml(value) {
   return String(value)
@@ -2364,6 +2367,16 @@ function trackCardsByModule(track) {
   ];
 }
 
+function showToast(message) {
+  state.toast = message;
+  render();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    state.toast = "";
+    render();
+  }, 2600);
+}
+
 function render() {
   const track = getTrack();
   const stats = statsForTrack(track.id);
@@ -2382,13 +2395,13 @@ function render() {
       <nav class="track-list" aria-label="学习科目">
         ${tracks.map(renderTrackButton).join("")}
       </nav>
-      <section class="side-section">
+      <section class="side-section" data-view="practice">
         <h2>题组</h2>
         <div class="module-list">
           ${trackCardsByModule(track).map(renderModuleButton).join("")}
         </div>
       </section>
-      <section class="side-section">
+      <section class="side-section" data-view="practice">
         <h2>模式</h2>
         <div class="mode-row">
           ${renderModeButton("due", "今日到期")}
@@ -2399,7 +2412,7 @@ function render() {
       </section>
     </aside>
     <main class="main">
-      <header class="topbar">
+      <header class="topbar" data-view="practice">
         <div>
           <h2>${escapeHtml(track.name)}</h2>
           <p>${escapeHtml(track.summary)}</p>
@@ -2430,9 +2443,33 @@ function render() {
         </div>
       </div>
     </main>
+    ${renderTabbar()}
+    ${state.toast ? `<div class="toast" role="status">${escapeHtml(state.toast)}</div>` : ""}
   `;
 
+  app.dataset.view = state.activeView || "practice";
   bindEvents();
+}
+
+function renderTabbar() {
+  return `
+    <nav class="tabbar" aria-label="主导航">
+      ${renderTab("practice", "练习", "✎")}
+      ${renderTab("today", "今日", "◐")}
+      ${renderTab("progress", "进度", "▲")}
+      ${renderTab("settings", "设置", "⚙")}
+    </nav>
+  `;
+}
+
+function renderTab(view, label, icon) {
+  const active = (state.activeView || "practice") === view ? " is-active" : "";
+  return `
+    <button class="tab-button${active}" data-action="view" data-tab="${view}">
+      <span class="tab-icon" aria-hidden="true">${icon}</span>
+      <span>${escapeHtml(label)}</span>
+    </button>
+  `;
 }
 
 function renderTrackButton(track) {
@@ -2463,7 +2500,7 @@ function renderModeButton(mode, label) {
 function renderCommutePanel() {
   const active = getCommuteSegment();
   return `
-    <section class="commute-panel">
+    <section class="commute-panel" data-view="practice">
       <div class="commute-head">
         <div>
           <h3>通勤模式</h3>
@@ -2493,7 +2530,7 @@ function renderPracticeCard() {
   const card = getCard();
   if (!card) {
     return `
-      <section class="card">
+      <section class="card" data-view="practice">
         <div class="empty-state">
           <div>
             <h3>准备开始</h3>
@@ -2514,7 +2551,7 @@ function renderPracticeCard() {
   const commute = state.mode === "commute" ? getCommuteSegment() : null;
 
   return `
-    <section class="card">
+    <section class="card" data-view="practice">
       <div class="card-header">
         <div class="tag-row">
           ${commute ? `<span class="tag">${escapeHtml(commute.name)}</span>` : ""}
@@ -2685,7 +2722,7 @@ function renderFooter(card) {
 
 function renderStatsPanel(stats) {
   return `
-    <section class="stats-panel">
+    <section class="stats-panel" data-view="progress">
       <h3 class="panel-title">进度</h3>
       <div class="stat-grid">
         <div class="stat"><b>${stats.due}</b><span>到期</span></div>
@@ -2700,7 +2737,7 @@ function renderStatsPanel(stats) {
 function renderDailyPanel() {
   const log = latestDailyLog(state.activeTrack);
   return `
-    <section class="custom-panel daily-panel">
+    <section class="custom-panel daily-panel" data-view="today">
       <h3 class="panel-title">今日记录</h3>
       <form data-action="daily-form">
         <label>
@@ -2750,7 +2787,7 @@ function renderProfilePanel() {
   const profile = learningProfile(state.activeTrack);
   const focus = profile.moduleRows.find((row) => row.id === profile.focusModule);
   return `
-    <section class="tool-panel">
+    <section class="tool-panel" data-view="progress">
       <h3 class="panel-title">学习档案</h3>
       <p class="profile-advice">${escapeHtml(profile.advice)}</p>
       <div class="chip-row">
@@ -2786,7 +2823,7 @@ function renderWeakPanel() {
     .slice(0, 4);
 
   return `
-    <section class="tool-panel">
+    <section class="tool-panel" data-view="progress">
       <h3 class="panel-title">弱项</h3>
       <ul class="weak-list">
         ${
@@ -2807,7 +2844,7 @@ function renderWeakPanel() {
 function renderHistoryPanel() {
   const recent = state.history.slice(-5).reverse();
   return `
-    <section class="tool-panel">
+    <section class="tool-panel" data-view="progress">
       <h3 class="panel-title">最近</h3>
       <ul class="history-list">
         ${
@@ -2827,7 +2864,7 @@ function renderHistoryPanel() {
 
 function renderCustomPanel() {
   return `
-    <section class="custom-panel">
+    <section class="custom-panel" data-view="settings">
       <h3 class="panel-title">自定义题</h3>
       <form data-action="custom-form">
         <label>
@@ -2861,7 +2898,7 @@ function renderCustomPanel() {
 function renderSyncPanel() {
   const config = state.gitSync || defaultState().gitSync;
   return `
-    <section class="custom-panel sync-panel">
+    <section class="custom-panel sync-panel" data-view="settings">
       <h3 class="panel-title">数据同步</h3>
       <div class="cloud-box">
         <h4>GitHub 云同步</h4>
@@ -2969,6 +3006,14 @@ function bindEvents() {
 function handleAction(event) {
   const button = event.currentTarget;
   const action = button.dataset.action;
+
+  if (action === "view") {
+    state.activeView = button.dataset.tab;
+    saveState();
+    render();
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+    return;
+  }
 
   if (action === "track") {
     state.activeTrack = button.dataset.track;
@@ -3330,6 +3375,7 @@ function handleCustomSubmit(event) {
   saveState();
   render();
   scheduleCloudSync();
+  showToast("已加入题库");
 }
 
 function handleDailySubmit(event) {
@@ -3366,13 +3412,15 @@ function handleDailySubmit(event) {
     ...buildDailyCards(log)
   ].slice(-120);
 
+  state.activeView = "practice";
   saveState();
   buildQueue("adaptive");
   scheduleCloudSync();
+  showToast("已保存今日记录，按今天的内容排好了练习");
 }
 
 function persistedState() {
-  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, ...persisted } = state;
   return {
     ...persisted,
     gitSync: persisted.gitSync ? { ...persisted.gitSync, token: "" } : undefined
@@ -3768,7 +3816,7 @@ function renderAiPanel() {
   const log = latestDailyLog(state.activeTrack);
   const provider = state.aiProvider || "deepseek";
   return `
-    <section class="custom-panel ai-panel">
+    <section class="custom-panel ai-panel" data-view="today">
       <h3 class="panel-title">AI 出题（本地代理）</h3>
       <p class="daily-meta">在电脑上跑一个本地代理，就能根据「今日记录」自动生成题目，可切换「本地模型 / DeepSeek」。生成的题进入题库，并会随 Gist 同步到手机。密钥只在你电脑上，不进前端、不进聊天。</p>
       <div class="form-grid">

@@ -1,4 +1,4 @@
-const CACHE_NAME = "triad-learning-trainer-v3";
+const CACHE_NAME = "triad-learning-trainer-v4";
 const CORE_ASSETS = [
   "./",
   "./index.html",
