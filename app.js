@@ -1919,6 +1919,8 @@ function defaultState() {
     translationOpen: false,
     syncText: "",
     syncMessage: "",
+    aiProxyUrl: "http://127.0.0.1:8799",
+    aiMessage: "",
     gitSync: {
       enabled: false,
       token: "",
@@ -1945,7 +1947,7 @@ function loadState() {
 }
 
 function saveState() {
-  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, ...persisted } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }
 
@@ -2408,6 +2410,7 @@ function render() {
         ${renderPracticeCard()}
         <div class="side-stack">
           ${renderDailyPanel()}
+          ${renderAiPanel()}
           ${renderStatsPanel(stats)}
           ${renderProfilePanel()}
           ${renderWeakPanel()}
@@ -2910,6 +2913,10 @@ function bindEvents() {
       element.addEventListener("submit", handleCustomSubmit);
     } else if (action === "daily-form") {
       element.addEventListener("submit", handleDailySubmit);
+    } else if (action === "ai-url") {
+      element.addEventListener("input", (event) => {
+        state.aiProxyUrl = event.target.value.trim();
+      });
     } else if (action === "sync-text") {
       element.addEventListener("input", (event) => {
         state.syncText = event.target.value;
@@ -3098,6 +3105,11 @@ function handleAction(event) {
 
   if (action === "push-github") {
     pushToGitHub();
+    return;
+  }
+
+  if (action === "ai-generate") {
+    generateAiCards();
   }
 }
 
@@ -3345,7 +3357,7 @@ function handleDailySubmit(event) {
 }
 
 function persistedState() {
-  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, ...persisted } = state;
   return {
     ...persisted,
     gitSync: persisted.gitSync ? { ...persisted.gitSync, token: "" } : undefined
@@ -3735,6 +3747,132 @@ function dailyChecklist(trackId, form) {
   if (form === "writing") return ["是否写出核心结构", "是否检查助词/搭配", "是否能改写一个相似句"];
   if (trackId === "tractatus") return ["是否抓住概念关系", "是否能举例", "是否避免只背术语"];
   return ["是否理解上下文", "是否说出关键词", "是否能造一个相似句"];
+}
+
+function renderAiPanel() {
+  const log = latestDailyLog(state.activeTrack);
+  return `
+    <section class="custom-panel ai-panel">
+      <h3 class="panel-title">AI 出题（本地代理）</h3>
+      <p class="daily-meta">在电脑上跑一个本地 DeepSeek 代理，就能根据「今日记录」自动生成题目。生成的题进入题库，并会随 Gist 同步到手机。API key 只在你电脑上，不进前端、不进聊天。</p>
+      <label>
+        本地代理地址
+        <input data-action="ai-url" value="${escapeHtml(state.aiProxyUrl || "")}" placeholder="http://127.0.0.1:8799" autocomplete="off" />
+      </label>
+      <button class="plain-button primary full-button" data-action="ai-generate" ${log ? "" : "disabled"}>
+        ${log ? `用「${escapeHtml(getTrack(state.activeTrack).name)}」今日记录生成题` : "请先保存今日记录"}
+      </button>
+      <p class="daily-meta">${escapeHtml(state.aiMessage || "需要先在电脑上启动 proxy/deepseek-proxy.mjs（见 README）。")}</p>
+    </section>
+  `;
+}
+
+async function generateAiCards() {
+  const log = latestDailyLog(state.activeTrack);
+  if (!log) {
+    state.aiMessage = "请先在「今日记录」里保存今天学了什么。";
+    render();
+    return;
+  }
+  const url = String(state.aiProxyUrl || "").replace(/\/+$/, "");
+  if (!url) {
+    state.aiMessage = "请先填写本地代理地址，例如 http://127.0.0.1:8799。";
+    render();
+    return;
+  }
+  state.aiMessage = "正在请求本地代理生成题目...";
+  render();
+  try {
+    const profile = learningProfile(state.activeTrack);
+    const response = await fetch(`${url}/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        track: state.activeTrack,
+        trackName: getTrack(state.activeTrack).name,
+        content: log.content || "",
+        difficulty: log.difficulty || "",
+        form: log.form || "context",
+        signals: log.signals || [],
+        weakTags: profile.weakTags,
+        count: 6
+      })
+    });
+    if (!response.ok) throw new Error(`代理返回 ${response.status}`);
+    const payload = await response.json();
+    const incoming = Array.isArray(payload.cards) ? payload.cards : [];
+    const cards = incoming.map((card, index) => normalizeAiCard(card, log, index)).filter(Boolean);
+    if (!cards.length) throw new Error("没有解析到有效题目，可重试一次");
+    state.generatedCards = [
+      ...state.generatedCards.filter((card) => card.aiSourceLogId !== log.id),
+      ...cards
+    ].slice(-160);
+    state.aiMessage = `已生成 ${cards.length} 道题，加入题库；下次同步会上传到手机。`;
+    saveState();
+    buildQueue("adaptive");
+    scheduleCloudSync();
+  } catch (error) {
+    state.aiMessage = `生成失败：${error.message}。请确认本地代理在运行、地址正确；HTTPS 页面调本地 http 可能被拦，可改用 http://localhost 打开网页。`;
+    render();
+  }
+}
+
+function normalizeAiCard(raw, log, index) {
+  if (!raw || typeof raw !== "object") return null;
+  const track = getTrack(log.track);
+  const moduleId =
+    track.modules.find((module) => module.id === raw.module)?.id ||
+    track.modules.find((module) => /reading|passage/.test(module.id))?.id ||
+    track.modules[0]?.id ||
+    "custom";
+  const type = ["choice", "input", "arrange", "self"].includes(raw.type) ? raw.type : "input";
+  const prompt = String(raw.prompt || "").trim();
+  if (!prompt) return null;
+
+  const base = {
+    id: `ai-${log.track}-${Date.now()}-${index}`,
+    aiSourceLogId: log.id,
+    sourceLogId: log.id,
+    track: log.track,
+    module: moduleId,
+    type,
+    prompt,
+    explanation: String(raw.explanation || "由本地 AI 代理根据今日记录生成。").trim(),
+    tags: ["ai", "daily", ...(Array.isArray(raw.tags) ? raw.tags.map(String) : []), ...(log.signals || [])]
+  };
+  if (raw.speak) base.speak = String(raw.speak);
+  if (raw.context && (raw.context.body || raw.context.title)) {
+    base.context = {
+      title: String(raw.context.title || "AI 课文/长句"),
+      body: Array.isArray(raw.context.body) ? raw.context.body.map(String) : [String(raw.context.body || "")],
+      translation: String(raw.context.translation || ""),
+      notes: Array.isArray(raw.context.notes) ? raw.context.notes.map(String) : []
+    };
+  }
+
+  if (type === "choice") {
+    const options = Array.isArray(raw.options) ? raw.options.map(String).filter(Boolean) : [];
+    const answer = String(raw.answer || "");
+    if (options.length < 2 || !options.includes(answer)) return null;
+    return { ...base, options, answer };
+  }
+  if (type === "arrange") {
+    const tokens = Array.isArray(raw.tokens) ? raw.tokens.map(String).filter(Boolean) : [];
+    if (tokens.length < 2) return null;
+    const answer = Array.isArray(raw.answer) && raw.answer.length ? raw.answer.map(String) : tokens;
+    return { ...base, tokens, answer };
+  }
+  if (type === "self") {
+    const checklist =
+      Array.isArray(raw.checklist) && raw.checklist.length
+        ? raw.checklist.map(String)
+        : ["是否抓住要点", "是否能举一个例子", "是否能用自己的话说出来"];
+    return { ...base, subprompt: String(raw.subprompt || "说完后自评。"), checklist, sample: String(raw.sample || raw.answer || "") };
+  }
+  const answer = String(raw.answer || "").trim();
+  if (!answer) return null;
+  const accepted = Array.isArray(raw.accepted) && raw.accepted.length ? raw.accepted.map(String) : [answer];
+  return { ...base, answer, accepted };
 }
 
 function registerServiceWorker() {

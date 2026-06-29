@@ -7,5 +7,9 @@
 Thumbs.db
 *.log
 
+# 密钥：绝不提交（DeepSeek 代理只从环境变量读 key）
+.env
+.env.*
+
 # 依赖（本项目当前无构建依赖，预留）
 node_modules/

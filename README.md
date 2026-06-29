@@ -105,13 +105,23 @@
 - 不要把 token 发给别人，也不要把带 token 的浏览器配置截图公开。
 - 如果你担心 token 暴露，可以只用手动“生成备份/导入并合并”。
 
-## AI 接入说明
+## AI 接入说明（DeepSeek 出题）
 
-当前版本先使用本地规则推荐，不需要联网，也不会上传你的学习记录。
+本地规则推荐不需要联网，也不会上传你的学习记录。
 
-DeepSeek API 可以接入，但不建议把 API key 直接存在前端页面或 iPhone 浏览器里。更稳的方案是后续加一个本地代理服务：前端把“今日记录 + 学习档案”发给本地服务，本地服务用 `DEEPSEEK_API_KEY` 调 DeepSeek，再返回题目和推荐策略。
+如果想让程序"根据今日记录自动出题"，项目自带一个**本地 DeepSeek 代理**（`proxy/deepseek-proxy.mjs`），保证 API key 只留在你电脑上，不进前端、不进仓库。
 
-Codex 不能直接嵌入这个静态页面里当在线接口，但你可以继续在这个工作区让我根据你的学习记录批量扩充题库；如果以后加后端，也可以预留 OpenAI 兼容接口。
+简要用法（详见 [`proxy/README.md`](proxy/README.md)）：
+
+```bash
+# 1) 在电脑上启动代理（key 只通过环境变量传入，需 Node 18+）
+DEEPSEEK_API_KEY=你的key node proxy/deepseek-proxy.mjs   # bash
+# 或 PowerShell： $env:DEEPSEEK_API_KEY="你的key"; node proxy/deepseek-proxy.mjs
+
+# 2) 网页里先保存「今日记录」，再到「AI 出题（本地代理）」面板点生成
+```
+
+设计思路：在**电脑上**生成题，生成的题进入题库并随 GitHub Gist 同步到手机，所以通勤时手机直接练，电车上和手机都不需要接触 API key。注意发布版是 HTTPS 页面，部分浏览器会拦截它访问本地 http 代理；如遇到这种情况，用 `python -m http.server 8787` 起本地网页再生成即可。
 
 ## 参考方向
 
