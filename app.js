@@ -659,6 +659,548 @@ const cards = [
     sample: "“书、桌子”只是两个对象的名字；“书在桌子上”说明了它们之间的一种排列关系，因此可以判断为真或假。",
     explanation: "能把对象和关系分开，你就抓住了读这本书的一个入口。",
     tags: ["passage", "fact", "object"]
+  },
+  {
+    id: "jp-vocab-005",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "choice",
+    prompt: "「いそがしい」最贴近哪一个意思？",
+    options: ["忙碌", "安静", "便宜", "有名"],
+    answer: "忙碌",
+    speak: "きょうは いそがしいです。",
+    explanation: "いそがしい 是「忙」。例：今日は仕事が忙しいです。"
+  },
+  {
+    id: "jp-vocab-006",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "choice",
+    prompt: "「べんり」的意思是？",
+    options: ["方便", "不便", "危险", "安静"],
+    answer: "方便",
+    speak: "このアプリは べんりです。",
+    explanation: "便利（べんり）是「方便」。反义是 不便（ふべん）。"
+  },
+  {
+    id: "jp-vocab-007",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "input",
+    prompt: "写出「便宜」的い形容词（假名即可）。",
+    accepted: ["やすい", "安い"],
+    answer: "安い",
+    speak: "この みせは やすいです。",
+    explanation: "安い（やすい）是「便宜」；注意和「安全」的汉字虽同，但读法不同。"
+  },
+  {
+    id: "jp-vocab-008",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "choice",
+    prompt: "「あさって」指的是？",
+    options: ["后天", "昨天", "前天", "今早"],
+    answer: "后天",
+    speak: "あさって テストが あります。",
+    explanation: "时间词：おととい(前天)・きのう(昨天)・きょう(今天)・あした(明天)・あさって(后天)。"
+  },
+  {
+    id: "jp-grammar-005",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「我想喝水」最自然的是？",
+    options: [
+      "水が飲みたいです。",
+      "水を飲みできます。",
+      "水を飲んでいます。",
+      "水を飲みましょう。"
+    ],
+    answer: "水が飲みたいです。",
+    speak: "水が飲みたいです。",
+    explanation: "想做某事：动词ます形去ます + たいです。对象常用 が（用 を 也可以）。"
+  },
+  {
+    id: "jp-grammar-006",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「东京比大阪大」对应哪一句？",
+    options: [
+      "東京は大阪より大きいです。",
+      "東京は大阪と大きいです。",
+      "東京は大阪が大きいです。",
+      "東京より大阪は大きいです。"
+    ],
+    answer: "東京は大阪より大きいです。",
+    speak: "東京は大阪より大きいです。",
+    explanation: "比较句：AはBより〜です，表示 A 比 B 更…。最后一项意思反了。"
+  },
+  {
+    id: "jp-grammar-007",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "input",
+    prompt: "把「行きます」变成 ない形。",
+    accepted: ["行かない", "いかない"],
+    answer: "行かない",
+    speak: "いかない",
+    explanation: "一类动词 ない形：き→か + ない。行きます -> 行かない。"
+  },
+  {
+    id: "jp-grammar-008",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「会日语」最自然的是？",
+    options: [
+      "日本語が できます。",
+      "日本語を できます。",
+      "日本語に できます。",
+      "日本語で できます。"
+    ],
+    answer: "日本語が できます。",
+    speak: "日本語が できます。",
+    explanation: "できます（会／能）前面的对象用 が：日本語が できます。"
+  },
+  {
+    id: "jp-grammar-009",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「我住在东京」应该选哪一句？",
+    options: [
+      "東京に住んでいます。",
+      "東京に住みます。",
+      "東京で住んでいます。",
+      "東京に住んでいました。"
+    ],
+    answer: "東京に住んでいます。",
+    speak: "東京に住んでいます。",
+    explanation: "住む 用「〜ています」表示持续状态；居住地点用 に。"
+  },
+  {
+    id: "jp-sentence-004",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：周末和朋友看了电影。",
+    tokens: ["しゅうまつ", "友達と", "映画を", "見ました"],
+    answer: ["しゅうまつ", "友達と", "映画を", "見ました"],
+    speak: "しゅうまつ、友達と映画を見ました。",
+    explanation: "と 表示一起做事的人；映画を見ます 是固定搭配。"
+  },
+  {
+    id: "jp-sentence-005",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：我每天早上七点起床。",
+    tokens: ["毎朝", "7時に", "起きます"],
+    answer: ["毎朝", "7時に", "起きます"],
+    speak: "毎朝7時に起きます。",
+    explanation: "具体时间点用 に：7時に。毎朝 是频率词，不加 に。"
+  },
+  {
+    id: "jp-sentence-006",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：这家餐厅又便宜又好吃。",
+    tokens: ["このレストランは", "安くて", "おいしいです"],
+    answer: ["このレストランは", "安くて", "おいしいです"],
+    speak: "このレストランは安くておいしいです。",
+    explanation: "い形容词连接用「〜くて」：安い -> 安くて。"
+  },
+  {
+    id: "jp-reading-004",
+    track: "japanese",
+    module: "jp-reading",
+    type: "choice",
+    prompt: "根据课文，他们在百货店做了什么？",
+    context: {
+      title: "小课文：週末",
+      body: [
+        "先週の日曜日、わたしは友達と新宿へ行きました。",
+        "デパートで買い物をして、おいしいラーメンを食べました。",
+        "それから、映画を見て、夜うちへ帰りました。"
+      ],
+      translation: "上周日，我和朋友去了新宿。在百货店购物，吃了好吃的拉面。然后看了电影，晚上回了家。",
+      notes: ["へ 表示移动方向", "〜て、〜て 连接先后动作", "それから 表示「然后」"]
+    },
+    options: ["买东西", "看电影", "学日语", "睡觉"],
+    answer: "买东西",
+    speak: "デパートで買い物をして、おいしいラーメンを食べました。",
+    explanation: "第二句：デパートで買い物をして…说明在百货店买了东西。",
+    tags: ["reading", "te-form", "vocab"]
+  },
+  {
+    id: "jp-reading-005",
+    track: "japanese",
+    module: "jp-reading",
+    type: "input",
+    prompt: "根据课文填空：それから、映画を___、夜うちへ帰りました。",
+    context: {
+      title: "小课文：週末",
+      body: [
+        "先週の日曜日、わたしは友達と新宿へ行きました。",
+        "デパートで買い物をして、おいしいラーメンを食べました。",
+        "それから、映画を見て、夜うちへ帰りました。"
+      ],
+      translation: "上周日，我和朋友去了新宿。在百货店购物，吃了好吃的拉面。然后看了电影，晚上回了家。",
+      notes: ["見る 的て形是 見て", "て形可以连接两个动作"]
+    },
+    accepted: ["見て", "みて"],
+    answer: "見て",
+    speak: "それから、映画を見て、夜うちへ帰りました。",
+    explanation: "見る -> 見て。放进课文动作链里记，比单背更稳。",
+    tags: ["reading", "te-form", "verb"]
+  },
+  {
+    id: "jp-reading-006",
+    track: "japanese",
+    module: "jp-reading",
+    type: "arrange",
+    prompt: "组出长句：周末在图书馆学习后，和朋友吃了饭。",
+    context: {
+      title: "长句骨架",
+      body: ["週末は図書館で勉強してから、友達とごはんを食べました。"],
+      translation: "周末在图书馆学习之后，和朋友一起吃了饭。",
+      notes: ["勉強してから 表示「学习之后」", "で 表示动作发生的场所", "と 表示一起的人"]
+    },
+    tokens: ["週末は", "図書館で", "勉強してから", "友達と", "ごはんを食べました"],
+    answer: ["週末は", "図書館で", "勉強してから", "友達と", "ごはんを食べました"],
+    speak: "週末は図書館で勉強してから、友達とごはんを食べました。",
+    explanation: "〜てから 表示前一个动作完成后再做下一件事。",
+    tags: ["reading", "long-sentence", "te-form"]
+  },
+  {
+    id: "en-civil-005",
+    track: "english",
+    module: "en-civil",
+    type: "choice",
+    prompt: "“Bearing capacity” of soil refers to:",
+    options: [
+      "the maximum load the soil can safely support",
+      "the speed of groundwater flow",
+      "the color of the concrete mix",
+      "the height of a retaining wall"
+    ],
+    answer: "the maximum load the soil can safely support",
+    speak: "The bearing capacity of the soil governs the foundation design.",
+    explanation: "bearing capacity 是地基承载力，决定基础尺寸和形式。"
+  },
+  {
+    id: "en-civil-006",
+    track: "english",
+    module: "en-civil",
+    type: "input",
+    prompt: "Translate into academic English: 抗压强度",
+    accepted: ["compressive strength"],
+    answer: "compressive strength",
+    speak: "compressive strength",
+    explanation: "compressive strength 抗压强度；tensile strength 抗拉强度；shear strength 抗剪强度。"
+  },
+  {
+    id: "en-civil-007",
+    track: "english",
+    module: "en-civil",
+    type: "choice",
+    prompt: "In construction, “formwork” is:",
+    options: [
+      "temporary molds that hold wet concrete until it hardens",
+      "the steel inside reinforced concrete",
+      "a survey of the site boundary",
+      "the final coat of paint"
+    ],
+    answer: "temporary molds that hold wet concrete until it hardens",
+    speak: "The formwork was removed after the concrete had cured.",
+    explanation: "formwork 是模板，混凝土硬化后拆除；cure 指养护。"
+  },
+  {
+    id: "en-civil-008",
+    track: "english",
+    module: "en-civil",
+    type: "choice",
+    prompt: "Choose the correct collocation: moving traffic produces a “___ load”.",
+    options: ["live", "alive", "living", "lived"],
+    answer: "live",
+    speak: "Bridges must be designed for both dead load and live load.",
+    explanation: "live load 活载（车辆、人群等可变荷载）；dead load 恒载（结构自重）。"
+  },
+  {
+    id: "en-ai-005",
+    track: "english",
+    module: "en-ai",
+    type: "choice",
+    prompt: "In machine learning, “ground truth” means:",
+    options: [
+      "the correct labels used to train or evaluate a model",
+      "the server hardware running the model",
+      "the current value of the loss function",
+      "the learning rate of the optimizer"
+    ],
+    answer: "the correct labels used to train or evaluate a model",
+    speak: "We compared the predictions against the ground truth.",
+    explanation: "ground truth 是真实标签/参考答案，用来训练或衡量模型。"
+  },
+  {
+    id: "en-ai-006",
+    track: "english",
+    module: "en-ai",
+    type: "input",
+    prompt: "Fill in the term: A model too simple to capture the pattern is said to be ___.",
+    accepted: ["underfitting", "underfit"],
+    answer: "underfitting",
+    speak: "The model is underfitting and performs poorly even on the training set.",
+    explanation: "underfitting 欠拟合，和 overfitting 过拟合相对。"
+  },
+  {
+    id: "en-ai-007",
+    track: "english",
+    module: "en-ai",
+    type: "choice",
+    prompt: "“Fine-tuning” a pretrained model usually means:",
+    options: [
+      "continuing training it on a specific downstream task",
+      "deleting half of its layers",
+      "measuring its inference latency",
+      "collecting a brand-new dataset from scratch"
+    ],
+    answer: "continuing training it on a specific downstream task",
+    speak: "We fine-tuned the pretrained model on our own dataset.",
+    explanation: "fine-tuning 微调：在预训练模型基础上，用特定任务数据继续训练。"
+  },
+  {
+    id: "en-ai-008",
+    track: "english",
+    module: "en-ai",
+    type: "choice",
+    prompt: "Best paraphrase: “The improvement is statistically significant.”",
+    options: [
+      "The improvement is unlikely to be due to random chance.",
+      "The improvement is extremely large.",
+      "The model runs much faster now.",
+      "The dataset is very small."
+    ],
+    answer: "The improvement is unlikely to be due to random chance.",
+    speak: "The improvement is statistically significant.",
+    explanation: "statistically significant 指差异在统计上不太可能是偶然，不等于「很大」。"
+  },
+  {
+    id: "en-ielts-004",
+    track: "english",
+    module: "en-ielts",
+    type: "choice",
+    prompt: "IELTS 写作：“a lot of problems” 的更学术替换是？",
+    options: [
+      "a significant number of problems",
+      "a lot lot of problems",
+      "many many problems",
+      "a big amount of problems"
+    ],
+    answer: "a significant number of problems",
+    speak: "A significant number of problems were identified during testing.",
+    explanation: "可数名词用 a significant/considerable number of；amount of 用于不可数名词。"
+  },
+  {
+    id: "en-ielts-005",
+    track: "english",
+    module: "en-ielts",
+    type: "input",
+    prompt: "给出 “In conclusion” 的一个学术替换开头。",
+    accepted: ["to sum up", "to conclude", "in summary", "overall"],
+    answer: "To sum up, ...",
+    speak: "To sum up, the benefits outweigh the drawbacks.",
+    explanation: "结尾段可用 To sum up / To conclude / In summary / Overall。"
+  },
+  {
+    id: "en-ielts-006",
+    track: "english",
+    module: "en-ielts",
+    type: "self",
+    prompt: "口语 45 秒：Describe a place where you often study and why you like it.",
+    subprompt: "说完后按自己的表现评分。",
+    checklist: [
+      "是否说清是什么地方",
+      "是否给出两个具体原因",
+      "是否用了 quiet, convenient, focus 中至少一个表达"
+    ],
+    sample: "I often study in the university library because it is quiet and well-equipped. The reading area helps me focus, and I can borrow reference books whenever I need them.",
+    speak: "Describe a place where you often study and why you like it.",
+    explanation: "地点 + 两个原因 + 一个具体细节，结构稳，时间也够。"
+  },
+  {
+    id: "en-reading-004",
+    track: "english",
+    module: "en-reading",
+    type: "choice",
+    prompt: "According to the sentence, what is the main benefit of the sensors?",
+    context: {
+      title: "AI + Civil Engineering Sentence",
+      body: [
+        "By installing sensors on the bridge, engineers can collect real-time data on vibration and temperature, which helps them detect potential damage before it becomes dangerous."
+      ],
+      translation: "通过在桥上安装传感器，工程师可以实时采集振动和温度数据，从而在潜在损伤变得危险之前发现它。",
+      notes: ["real-time data = 实时数据", "detect = 发现/检测", "before it becomes dangerous = 在变危险之前"]
+    },
+    options: [
+      "Detecting potential damage early.",
+      "Reducing the weight of the bridge.",
+      "Changing the color of the bridge.",
+      "Increasing the speed of traffic."
+    ],
+    answer: "Detecting potential damage early.",
+    speak: "By installing sensors on the bridge, engineers can collect real-time data on vibration and temperature, which helps them detect potential damage before it becomes dangerous.",
+    explanation: "which helps them detect potential damage before it becomes dangerous 点明主要好处。",
+    tags: ["reading", "civil", "ai", "long-sentence"]
+  },
+  {
+    id: "en-reading-005",
+    track: "english",
+    module: "en-reading",
+    type: "input",
+    prompt: "Fill in the academic verb: Researchers ___ the new method on three datasets to test its robustness.",
+    context: {
+      title: "Academic Method Sentence",
+      body: [
+        "Researchers evaluated the new method on three datasets to test its robustness under different conditions."
+      ],
+      translation: "研究者在三个数据集上评估了新方法，以测试它在不同条件下的稳健性。",
+      notes: ["evaluate = 评估", "robustness = 稳健性/鲁棒性", "under different conditions = 在不同条件下"]
+    },
+    accepted: ["evaluated", "tested", "assessed"],
+    answer: "evaluated",
+    speak: "Researchers evaluated the new method on three datasets to test its robustness.",
+    explanation: "evaluate / test / assess 都可用于「评估方法」，论文方法部分高频。",
+    tags: ["reading", "ai", "academic-verb"]
+  },
+  {
+    id: "en-reading-006",
+    track: "english",
+    module: "en-reading",
+    type: "arrange",
+    prompt: "Rebuild the sentence: 尽管模型准确率很高，它需要大量带标注的数据。",
+    context: {
+      title: "Concessive Sentence Pattern",
+      body: ["Although the model achieved high accuracy, it required a large amount of labeled data."],
+      translation: "尽管模型达到了很高的准确率，它需要大量带标注的数据。",
+      notes: ["Although + 从句 表示让步", "a large amount of = 大量（不可数）", "labeled data = 带标注的数据"]
+    },
+    tokens: ["Although the model achieved high accuracy", "it required", "a large amount of", "labeled data"],
+    answer: ["Although the model achieved high accuracy", "it required", "a large amount of", "labeled data"],
+    speak: "Although the model achieved high accuracy, it required a large amount of labeled data.",
+    explanation: "Although 引导让步状语从句，常用来在论文里承认局限。",
+    tags: ["reading", "ai", "long-sentence"]
+  },
+  {
+    id: "tlp-concept-004",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "命题能够描画现实，是因为它和现实共享：",
+    options: ["逻辑形式（结构）", "相同的颜色", "相同的重量", "相同的价格"],
+    answer: "逻辑形式（结构）",
+    explanation: "图像论：命题之所以能表现事态，是因为它与所描画的事态共享逻辑形式。"
+  },
+  {
+    id: "tlp-concept-005",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "全书结尾命题（命题 7）入门理解最接近：",
+    options: [
+      "对于不能说的东西，必须保持沉默。",
+      "对于不能说的东西，要大声争论。",
+      "不能说的东西根本不存在。",
+      "不能说的东西就是科学定律。"
+    ],
+    answer: "对于不能说的东西，必须保持沉默。",
+    explanation: "命题 7：「对于不能谈论的东西，必须保持沉默。」是全书著名收尾。"
+  },
+  {
+    id: "tlp-relation-004",
+    track: "tractatus",
+    module: "tlp-relation",
+    type: "choice",
+    prompt: "和「重言式恒为真」相对，「矛盾式」是：",
+    options: [
+      "无论事实如何都为假",
+      "无论事实如何都为真",
+      "有时真有时假",
+      "经验上很可能为真"
+    ],
+    answer: "无论事实如何都为假",
+    explanation: "重言式恒真、矛盾式恒假；两者都不描述世界中的具体事实，只展示逻辑结构。"
+  },
+  {
+    id: "tlp-relation-005",
+    track: "tractatus",
+    module: "tlp-relation",
+    type: "choice",
+    prompt: "按入门理解，「逻辑形式本身」更适合说成：",
+    options: [
+      "不能被说出，只能被显示",
+      "可以像普通事实一样被描述",
+      "是一种经验观察的结果",
+      "是一条伦理规范"
+    ],
+    answer: "不能被说出，只能被显示",
+    explanation: "saying / showing 的区分：逻辑形式显示在命题如何运作之中，却不能再被一个命题说出。"
+  },
+  {
+    id: "tlp-passage-003",
+    track: "tractatus",
+    module: "tlp-passage",
+    type: "choice",
+    prompt: "这段话想帮助你区分什么？",
+    context: {
+      title: "入门段落：可说与显示",
+      body: [
+        "科学命题试图说出世界中成立了什么。但有些东西——例如逻辑形式本身——不能再被一个命题说出，它只在命题如何运作中显示出来。"
+      ],
+      translation: "这不是原书引文，而是入门改写：重点是区分「说出」和「显示」。",
+      notes: ["可说：经验事实", "显示：逻辑形式", "入口：saying / showing"]
+    },
+    options: ["说出与显示", "真与假", "好与坏", "多与少"],
+    answer: "说出与显示",
+    explanation: "有些东西不能被事实命题说出，却在语言的使用中显示出来。",
+    tags: ["passage", "saying", "showing"]
+  },
+  {
+    id: "tlp-passage-004",
+    track: "tractatus",
+    module: "tlp-passage",
+    type: "self",
+    prompt: "用自己的话解释命题 7：「对于不能说的东西，必须保持沉默」。",
+    subprompt: "说完后按清晰度评分。",
+    context: {
+      title: "入门段落：沉默的边界",
+      body: [
+        "如果有意义的命题只能描画可能的事实，那么超出事实之外的东西（如绝对的价值、世界整体的意义）就无法被这样说出。"
+      ],
+      translation: "入门改写，非原文引用：重点是理解「沉默」针对的是哪一类东西。",
+      notes: ["先说命题的界限在哪里", "再说沉默针对什么", "不必同意，先讲清"]
+    },
+    checklist: ["是否说清「可说」的界限", "是否说明沉默针对什么", "是否给出一个自己的例子"],
+    sample: "有意义的命题只能描述可能成立或不成立的事实。像「世界整体为什么存在」这类问题不在事实范围内，因此不能被这样的命题说出，只能保持沉默。",
+    explanation: "重点不是「闭嘴」，而是划清事实语言的边界。",
+    tags: ["passage", "saying", "showing"]
+  },
+  {
+    id: "tlp-reading-004",
+    track: "tractatus",
+    module: "tlp-reading",
+    type: "choice",
+    prompt: "关于全书的小数编号（1, 1.1, 1.11…），更合适的入门理解是：",
+    options: [
+      "小数位表示命题之间的从属和注释关系（逻辑权重）",
+      "编号是随机排列的",
+      "编号表示写作的日期顺序",
+      "编号表示原书的页码"
+    ],
+    answer: "小数位表示命题之间的从属和注释关系（逻辑权重）",
+    explanation: "维特根斯坦用小数编号表示命题的逻辑层级：n.1 是对 n 的注释，依此类推。"
   }
 ];
 
