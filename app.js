@@ -1920,6 +1920,7 @@ function defaultState() {
     syncText: "",
     syncMessage: "",
     aiProxyUrl: "http://127.0.0.1:8799",
+    aiProvider: "deepseek",
     aiMessage: "",
     gitSync: {
       enabled: false,
@@ -2926,6 +2927,11 @@ function bindEvents() {
       element.addEventListener("input", (event) => {
         state.aiProxyUrl = event.target.value.trim();
       });
+    } else if (action === "ai-provider") {
+      element.addEventListener("change", (event) => {
+        state.aiProvider = event.target.value;
+        saveState();
+      });
     } else if (action === "sync-text") {
       element.addEventListener("input", (event) => {
         state.syncText = event.target.value;
@@ -3760,18 +3766,28 @@ function dailyChecklist(trackId, form) {
 
 function renderAiPanel() {
   const log = latestDailyLog(state.activeTrack);
+  const provider = state.aiProvider || "deepseek";
   return `
     <section class="custom-panel ai-panel">
       <h3 class="panel-title">AI 出题（本地代理）</h3>
-      <p class="daily-meta">在电脑上跑一个本地 DeepSeek 代理，就能根据「今日记录」自动生成题目。生成的题进入题库，并会随 Gist 同步到手机。API key 只在你电脑上，不进前端、不进聊天。</p>
-      <label>
-        本地代理地址
-        <input data-action="ai-url" value="${escapeHtml(state.aiProxyUrl || "")}" placeholder="http://127.0.0.1:8799" autocomplete="off" />
-      </label>
+      <p class="daily-meta">在电脑上跑一个本地代理，就能根据「今日记录」自动生成题目，可切换「本地模型 / DeepSeek」。生成的题进入题库，并会随 Gist 同步到手机。密钥只在你电脑上，不进前端、不进聊天。</p>
+      <div class="form-grid">
+        <label>
+          出题来源
+          <select data-action="ai-provider">
+            ${renderSelectOption("deepseek", "DeepSeek API", provider)}
+            ${renderSelectOption("local", "本地模型", provider)}
+          </select>
+        </label>
+        <label>
+          本地代理地址
+          <input data-action="ai-url" value="${escapeHtml(state.aiProxyUrl || "")}" placeholder="http://127.0.0.1:8799" autocomplete="off" />
+        </label>
+      </div>
       <button class="plain-button primary full-button" data-action="ai-generate" ${log ? "" : "disabled"}>
         ${log ? `用「${escapeHtml(getTrack(state.activeTrack).name)}」今日记录生成题` : "请先保存今日记录"}
       </button>
-      <p class="daily-meta">${escapeHtml(state.aiMessage || "需要先在电脑上启动 proxy/deepseek-proxy.mjs（见 README）。")}</p>
+      <p class="daily-meta">${escapeHtml(state.aiMessage || "需要先在电脑上启动 proxy/ai-proxy.mjs（见 proxy/README.md）。")}</p>
     </section>
   `;
 }
@@ -3797,6 +3813,7 @@ async function generateAiCards() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        provider: state.aiProvider || "deepseek",
         track: state.activeTrack,
         trackName: getTrack(state.activeTrack).name,
         content: log.content || "",
@@ -3816,7 +3833,7 @@ async function generateAiCards() {
       ...state.generatedCards.filter((card) => card.aiSourceLogId !== log.id),
       ...cards
     ].slice(-160);
-    state.aiMessage = `已生成 ${cards.length} 道题，加入题库；下次同步会上传到手机。`;
+    state.aiMessage = `已用「${payload.provider === "local" ? "本地模型" : "DeepSeek"}」生成 ${cards.length} 道题，加入题库；下次同步会上传到手机。`;
     saveState();
     buildQueue("adaptive");
     scheduleCloudSync();

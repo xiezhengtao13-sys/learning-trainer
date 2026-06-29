@@ -105,23 +105,25 @@
 - 不要把 token 发给别人，也不要把带 token 的浏览器配置截图公开。
 - 如果你担心 token 暴露，可以只用手动“生成备份/导入并合并”。
 
-## AI 接入说明（DeepSeek 出题）
+## AI 接入说明（本地模型 / DeepSeek 出题）
 
 本地规则推荐不需要联网，也不会上传你的学习记录。
 
-如果想让程序"根据今日记录自动出题"，项目自带一个**本地 DeepSeek 代理**（`proxy/deepseek-proxy.mjs`），保证 API key 只留在你电脑上，不进前端、不进仓库。
+如果想让程序"根据今日记录自动出题"，项目自带一个**本地 AI 代理**（`proxy/ai-proxy.mjs`），
+可在「本地模型 / DeepSeek API」之间切换：DeepSeek 的 key 只留在你电脑上、不进前端不进仓库；
+本地模型（Ollama 等）则完全离线、不需要密钥。
 
 简要用法（详见 [`proxy/README.md`](proxy/README.md)）：
 
 ```bash
-# 1) 在电脑上启动代理（key 只通过环境变量传入，需 Node 18+）
-DEEPSEEK_API_KEY=你的key node proxy/deepseek-proxy.mjs   # bash
-# 或 PowerShell： $env:DEEPSEEK_API_KEY="你的key"; node proxy/deepseek-proxy.mjs
+# 在电脑上启动代理（需 Node 18+）
+DEEPSEEK_API_KEY=你的key node proxy/ai-proxy.mjs   # 用 DeepSeek
+AI_PROVIDER=local node proxy/ai-proxy.mjs          # 用本地模型（先装好 Ollama）
 
-# 2) 网页里先保存「今日记录」，再到「AI 出题（本地代理）」面板点生成
+# 然后网页里先保存「今日记录」，在「AI 出题（本地代理）」面板选好来源，点生成
 ```
 
-设计思路：在**电脑上**生成题，生成的题进入题库并随 GitHub Gist 同步到手机，所以通勤时手机直接练，电车上和手机都不需要接触 API key。注意发布版是 HTTPS 页面，部分浏览器会拦截它访问本地 http 代理；如遇到这种情况，用 `python -m http.server 8787` 起本地网页再生成即可。
+设计思路：在**电脑上**生成题，生成的题进入题库并随 GitHub Gist 同步到手机，所以通勤时手机直接练，电车上和手机都不需要接触模型密钥。注意发布版是 HTTPS 页面，部分浏览器会拦截它访问本地 http 代理；如遇到这种情况，用 `python -m http.server 8787` 起本地网页再生成即可。
 
 ## 参考方向
 
