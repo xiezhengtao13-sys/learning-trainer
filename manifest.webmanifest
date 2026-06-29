@@ -1,0 +1,23 @@
+{
+  "name": "三线学习训练器",
+  "short_name": "学习训练器",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f6f7f2",
+  "theme_color": "#f6f7f2",
+  "description": "面向通勤场景的日语、英语和逻辑哲学论练习工具。",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+# 编辑器/工具本地配置
+.claude/
+.agents/
+
+# 系统与日志
+.DS_Store
+Thumbs.db
+*.log
+
+# 依赖（本项目当前无构建依赖，预留）
+node_modules/

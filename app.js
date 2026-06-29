@@ -1,0 +1,2531 @@
+const STORAGE_KEY = "triad-learning-trainer-v1";
+const DAY = 24 * 60 * 60 * 1000;
+
+const commuteSegments = [
+  {
+    id: "platform",
+    name: "站台/换乘",
+    route: "等车或走路时",
+    size: 3,
+    hint: "只做单手选择题，随时可停。",
+    tracks: ["japanese", "english", "tractatus"],
+    types: ["choice"],
+    forms: ["quiz"]
+  },
+  {
+    id: "minamiyono-akabane",
+    name: "南与野→赤羽",
+    route: "JR 段 1",
+    size: 8,
+    hint: "适合读课文长句，先进入状态。",
+    tracks: ["japanese", "english"],
+    types: ["choice", "input", "arrange", "self"],
+    forms: ["context", "quiz"]
+  },
+  {
+    id: "akabane-oji",
+    name: "赤羽→王子",
+    route: "短段快练",
+    size: 5,
+    hint: "短段不打字，做快速判断。",
+    tracks: ["japanese", "english", "tractatus"],
+    types: ["choice"],
+    forms: ["quiz"]
+  },
+  {
+    id: "oji-todaimae",
+    name: "王子→东大前",
+    route: "地下铁段",
+    size: 10,
+    hint: "适合长句、默写和口语复述。",
+    tracks: ["english", "tractatus", "japanese"],
+    types: ["input", "arrange", "self", "choice"],
+    forms: ["context", "writing", "speaking"]
+  }
+];
+
+const tracks = [
+  {
+    id: "japanese",
+    name: "日语",
+    mark: "日",
+    color: "#d05b4f",
+    level: "初级 · Minna 1-15",
+    summary: "从课文和长句里拆出词汇、语法和表达，少背孤立词。",
+    modules: [
+      { id: "jp-reading", name: "课文长句" },
+      { id: "jp-vocab", name: "词汇反应" },
+      { id: "jp-grammar", name: "语法选择" },
+      { id: "jp-sentence", name: "组句" }
+    ]
+  },
+  {
+    id: "english",
+    name: "英语",
+    mark: "EN",
+    color: "#286bb8",
+    level: "IELTS 6.0 · 工程/AI",
+    summary: "用工程和 AI 长句做精读、听说复述和学科词汇反应。",
+    modules: [
+      { id: "en-reading", name: "长句精读" },
+      { id: "en-civil", name: "土木词汇" },
+      { id: "en-ai", name: "AI 学术英语" },
+      { id: "en-ielts", name: "雅思表达" }
+    ]
+  },
+  {
+    id: "tractatus",
+    name: "逻辑哲学论",
+    mark: "L",
+    color: "#2f7d5b",
+    level: "入门 · 概念地图",
+    summary: "用短段落、概念题和关系题建立《逻辑哲学论》的骨架。",
+    modules: [
+      { id: "tlp-passage", name: "段落精读" },
+      { id: "tlp-concept", name: "核心概念" },
+      { id: "tlp-relation", name: "关系辨析" },
+      { id: "tlp-reading", name: "读法判断" }
+    ]
+  }
+];
+
+const cards = [
+  {
+    id: "jp-vocab-001",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "choice",
+    prompt: "「はたらきます」最贴近哪一个意思？",
+    options: ["工作", "休息", "借入", "等待"],
+    answer: "工作",
+    speak: "はたらきます",
+    explanation: "はたらきます 是「工作」。常见句型：会社で はたらきます。"
+  },
+  {
+    id: "jp-vocab-002",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "choice",
+    prompt: "「借ります」和「貸します」的关系是？",
+    options: ["借入 / 借出", "进入 / 出去", "学习 / 教授", "打开 / 关闭"],
+    answer: "借入 / 借出",
+    speak: "かります。かします。",
+    explanation: "借ります 是从别人那里借来；貸します 是把东西借给别人。"
+  },
+  {
+    id: "jp-vocab-003",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "input",
+    prompt: "写出「使用」的日语动词ます形。",
+    accepted: ["つかいます", "使います"],
+    answer: "使います",
+    speak: "つかいます",
+    explanation: "使います 表示使用工具、设备、语言等。例：パソコンを使います。"
+  },
+  {
+    id: "jp-vocab-004",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "choice",
+    prompt: "「入ります」通常和哪个助词搭配表示进入某处？",
+    options: ["に", "を", "で", "と"],
+    answer: "に",
+    speak: "へやに はいります",
+    explanation: "进入的目标常用 に：部屋に入ります。离开某处常用 を：部屋を出ます。"
+  },
+  {
+    id: "jp-grammar-001",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "想说「请在这里写名字」，最自然的是？",
+    options: [
+      "ここに名前を書いてください。",
+      "ここで名前を書きますください。",
+      "ここを名前で書いてください。",
+      "ここに名前を書くてもいいです。"
+    ],
+    answer: "ここに名前を書いてください。",
+    speak: "ここに名前を書いてください。",
+    explanation: "请求别人做某事：动词て形 + ください。写在某个位置常用 に。"
+  },
+  {
+    id: "jp-grammar-002",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「可以用信用卡吗？」对应哪一句？",
+    options: [
+      "カードを使ってもいいですか。",
+      "カードを使ってはいけませんか。",
+      "カードを使っていますか。",
+      "カードを使いましょうか。"
+    ],
+    answer: "カードを使ってもいいですか。",
+    speak: "カードを使ってもいいですか。",
+    explanation: "许可表达：动词て形 + もいいですか。禁止是 てはいけません。"
+  },
+  {
+    id: "jp-grammar-003",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「现在正在学习日语」应该选哪一句？",
+    options: [
+      "今、日本語を勉強しています。",
+      "今、日本語を勉強してもいいです。",
+      "今、日本語を勉強してください。",
+      "今、日本語を勉強しませんでした。"
+    ],
+    answer: "今、日本語を勉強しています。",
+    speak: "いま、日本語を勉強しています。",
+    explanation: "正在进行：动词て形 + います。"
+  },
+  {
+    id: "jp-grammar-004",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "input",
+    prompt: "把「飲みます」变成 て形。",
+    accepted: ["飲んで", "のんで"],
+    answer: "飲んで",
+    speak: "のんで",
+    explanation: "み/び/に 结尾的一类动词，て形常变为 んで：飲みます -> 飲んで。"
+  },
+  {
+    id: "jp-sentence-001",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：请不要在这里拍照。",
+    tokens: ["ここで", "写真を", "撮らないで", "ください"],
+    answer: ["ここで", "写真を", "撮らないで", "ください"],
+    speak: "ここで写真を撮らないでください。",
+    explanation: "礼貌地请求不要做某事：ない形 + でください。"
+  },
+  {
+    id: "jp-sentence-002",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：我明天和老师去图书馆。",
+    tokens: ["あした", "先生と", "図書館へ", "行きます"],
+    answer: ["あした", "先生と", "図書館へ", "行きます"],
+    speak: "あした先生と図書館へ行きます。",
+    explanation: "と 表示一起行动的人；へ 表示移动方向。"
+  },
+  {
+    id: "jp-sentence-003",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：我可以坐这里吗？",
+    tokens: ["ここに", "座っても", "いいですか"],
+    answer: ["ここに", "座っても", "いいですか"],
+    speak: "ここに座ってもいいですか。",
+    explanation: "座る 的て形是 座って；许可询问用 てもいいですか。"
+  },
+  {
+    id: "en-civil-001",
+    track: "english",
+    module: "en-civil",
+    type: "choice",
+    prompt: "In civil engineering, “settlement” most often means:",
+    options: [
+      "downward movement of the ground or foundation",
+      "a legal agreement after a dispute",
+      "mixing water into concrete",
+      "the top layer of asphalt"
+    ],
+    answer: "downward movement of the ground or foundation",
+    speak: "The foundation showed excessive settlement after construction.",
+    explanation: "工程语境里 settlement 常指地基或结构的沉降。"
+  },
+  {
+    id: "en-civil-002",
+    track: "english",
+    module: "en-civil",
+    type: "choice",
+    prompt: "Choose the best collocation: “___ strength of soil”.",
+    options: ["shear", "sharp", "split", "shallow"],
+    answer: "shear",
+    speak: "The shear strength of soil is critical for slope stability.",
+    explanation: "shear strength 是「抗剪强度」，土力学里非常高频。"
+  },
+  {
+    id: "en-civil-003",
+    track: "english",
+    module: "en-civil",
+    type: "input",
+    prompt: "Translate into academic English: 钢筋混凝土",
+    accepted: ["reinforced concrete"],
+    answer: "reinforced concrete",
+    speak: "reinforced concrete",
+    explanation: "reinforced concrete 指钢筋混凝土；rebar 是钢筋本身。"
+  },
+  {
+    id: "en-civil-004",
+    track: "english",
+    module: "en-civil",
+    type: "choice",
+    prompt: "“Permeability” is closest to:",
+    options: [
+      "the ability of water to pass through a material",
+      "the weight carried by a beam",
+      "the curing time of concrete",
+      "the accuracy of a survey"
+    ],
+    answer: "the ability of water to pass through a material",
+    speak: "Clay usually has low permeability.",
+    explanation: "permeability 是渗透性，常用于土、岩石、混凝土等材料。"
+  },
+  {
+    id: "en-ai-001",
+    track: "english",
+    module: "en-ai",
+    type: "choice",
+    prompt: "In machine learning, “overfitting” means the model:",
+    options: [
+      "performs well on training data but poorly on new data",
+      "has too few parameters to learn the task",
+      "runs faster after deployment",
+      "uses only labeled examples"
+    ],
+    answer: "performs well on training data but poorly on new data",
+    speak: "The model overfits the training set and fails to generalize.",
+    explanation: "overfitting 是过拟合；generalize/generalization 是泛化。"
+  },
+  {
+    id: "en-ai-002",
+    track: "english",
+    module: "en-ai",
+    type: "input",
+    prompt: "Fill in the blank: A simple model used for comparison is called a ___.",
+    accepted: ["baseline"],
+    answer: "baseline",
+    speak: "We compare our method with a strong baseline.",
+    explanation: "baseline 是基线模型或基准方法，论文里常用于比较改进幅度。"
+  },
+  {
+    id: "en-ai-003",
+    track: "english",
+    module: "en-ai",
+    type: "choice",
+    prompt: "“Inference” in AI deployment usually refers to:",
+    options: [
+      "using a trained model to make predictions",
+      "collecting labels for a dataset",
+      "rewriting the loss function",
+      "randomly initializing model weights"
+    ],
+    answer: "using a trained model to make predictions",
+    speak: "Inference latency matters in real-time applications.",
+    explanation: "训练后的模型进行预测叫 inference。latency 是延迟。"
+  },
+  {
+    id: "en-ai-004",
+    track: "english",
+    module: "en-ai",
+    type: "choice",
+    prompt: "Choose the best paraphrase: “The dataset is biased.”",
+    options: [
+      "The data does not represent the target population fairly.",
+      "The data is stored in a smaller file.",
+      "The model has fewer layers.",
+      "The training process finished early."
+    ],
+    answer: "The data does not represent the target population fairly.",
+    speak: "The dataset is biased.",
+    explanation: "biased dataset 指样本分布、标注或来源存在偏差，不是文件大小问题。"
+  },
+  {
+    id: "en-ielts-001",
+    track: "english",
+    module: "en-ielts",
+    type: "choice",
+    prompt: "IELTS Task 1: “increase rapidly” 的更学术替换是？",
+    options: ["rise sharply", "go big", "move fastly", "become much"],
+    answer: "rise sharply",
+    speak: "The proportion rose sharply between 2010 and 2020.",
+    explanation: "rise sharply 是自然搭配；fastly 基本不用。"
+  },
+  {
+    id: "en-ielts-002",
+    track: "english",
+    module: "en-ielts",
+    type: "input",
+    prompt: "把 “I think this is important” 改成更学术的开头。",
+    accepted: [
+      "it is important to note that",
+      "it is worth noting that",
+      "it should be noted that"
+    ],
+    answer: "It is worth noting that ...",
+    speak: "It is worth noting that this issue affects long-term safety.",
+    explanation: "写作里可以用 It is worth noting that... 来降低口语感。"
+  },
+  {
+    id: "en-ielts-003",
+    track: "english",
+    module: "en-ielts",
+    type: "self",
+    prompt: "口语 45 秒：Describe a technology that helps engineers work more efficiently.",
+    subprompt: "说完后按自己的表现评分。",
+    checklist: [
+      "是否说清楚这是什么技术",
+      "是否给出一个工程场景",
+      "是否用了 efficiency, accuracy, reduce errors 中至少一个表达"
+    ],
+    sample: "BIM helps engineers coordinate structural, architectural, and mechanical information in one model. It improves efficiency because conflicts can be found before construction starts.",
+    speak: "Describe a technology that helps engineers work more efficiently.",
+    explanation: "这个题目把技术、工程场景、优点三块说完整就够稳定。"
+  },
+  {
+    id: "tlp-concept-001",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "《逻辑哲学论》开头把世界理解为：",
+    options: ["事实的总和", "物体的清单", "心理经验的集合", "伦理命令的系统"],
+    answer: "事实的总和",
+    explanation: "入门先抓住区分：世界不是单个东西的清单，而是成立的事实的总和。"
+  },
+  {
+    id: "tlp-concept-002",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "“命题像图像一样表现现实”主要对应哪个理论？",
+    options: ["图像论", "功利主义", "经验归纳法", "观念回忆说"],
+    answer: "图像论",
+    explanation: "图像论关注命题与现实共享某种结构，因此命题能表现可能的事态。"
+  },
+  {
+    id: "tlp-concept-003",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "在《逻辑哲学论》的框架里，逻辑形式更像是：",
+    options: [
+      "使命题能够表现事实的结构条件",
+      "一个心理图像的颜色",
+      "某种经验科学结论",
+      "一种道德规范"
+    ],
+    answer: "使命题能够表现事实的结构条件",
+    explanation: "逻辑形式不是普通对象；它是命题和现实能够对应的结构条件。"
+  },
+  {
+    id: "tlp-relation-001",
+    track: "tractatus",
+    module: "tlp-relation",
+    type: "arrange",
+    prompt: "按入门理解排序：",
+    tokens: ["对象", "事态", "事实", "世界"],
+    answer: ["对象", "事态", "事实", "世界"],
+    explanation: "可粗略记为：对象构成可能的事态；成立的事态是事实；世界由事实构成。"
+  },
+  {
+    id: "tlp-relation-002",
+    track: "tractatus",
+    module: "tlp-relation",
+    type: "choice",
+    prompt: "“重言式”在逻辑上最接近：",
+    options: [
+      "无论事实如何都为真",
+      "经验上很可能为真",
+      "在伦理上正确",
+      "因为观察到很多次所以为真"
+    ],
+    answer: "无论事实如何都为真",
+    explanation: "重言式不描述世界中的具体事实，而展示逻辑结构。"
+  },
+  {
+    id: "tlp-relation-003",
+    track: "tractatus",
+    module: "tlp-relation",
+    type: "choice",
+    prompt: "如果一个命题有意义，它至少应该能够：",
+    options: [
+      "区分世界可能如何与不可能如何",
+      "保证说话者道德正确",
+      "表达无法想象的神秘对象",
+      "自动成为科学定律"
+    ],
+    answer: "区分世界可能如何与不可能如何",
+    explanation: "有意义的命题能描画一种可能的事实状态，因此有真假条件。"
+  },
+  {
+    id: "tlp-reading-001",
+    track: "tractatus",
+    module: "tlp-reading",
+    type: "choice",
+    prompt: "读《逻辑哲学论》时，哪种做法更适合初学者？",
+    options: [
+      "先画概念关系，再回到编号命题",
+      "逐字背诵全部命题编号",
+      "只看结尾一句，不管前文",
+      "先用现代 AI 术语重写全书"
+    ],
+    answer: "先画概念关系，再回到编号命题",
+    explanation: "这本书压缩度很高，初学阶段先建立概念地图会比硬背更稳。"
+  },
+  {
+    id: "tlp-reading-002",
+    track: "tractatus",
+    module: "tlp-reading",
+    type: "input",
+    prompt: "用两个字填空：维特根斯坦常被理解为在划定“可说”与“可___”的界限。",
+    accepted: ["显示", "示"],
+    answer: "显示",
+    explanation: "一个常见入口是区分 saying 和 showing：有些东西不能被事实命题说出，却在语言使用中显示出来。"
+  },
+  {
+    id: "tlp-reading-003",
+    track: "tractatus",
+    module: "tlp-reading",
+    type: "self",
+    prompt: "用 60 秒解释：为什么“世界是事实的总和”不是“世界是物的总和”？",
+    subprompt: "解释完后按自己的清晰度评分。",
+    checklist: [
+      "是否区分了对象和事实",
+      "是否说到对象之间的组合关系",
+      "是否给出一个简单例子"
+    ],
+    sample: "A list of objects does not tell us what is the case. Facts include how objects are arranged, for example whether the book is on the table.",
+    explanation: "这题的关键是把“有什么东西”和“事情如何成立”分开。"
+  },
+  {
+    id: "jp-reading-001",
+    track: "japanese",
+    module: "jp-reading",
+    type: "choice",
+    prompt: "根据课文，田中さん为什么去图书馆？",
+    context: {
+      title: "小课文：図書館で",
+      body: [
+        "きのう、田中さんは大学の図書館へ行きました。",
+        "図書館で日本語の本を読んで、新しい言葉をノートに書きました。",
+        "うちへ帰ってから、先生にメールを送りました。"
+      ],
+      translation: "昨天田中去了大学图书馆。在图书馆读了日语书，并把新词写在笔记本上。回家以后，给老师发了邮件。",
+      notes: ["へ 表示移动方向", "読んで、書きました 是动作连接", "帰ってから 表示回去之后"]
+    },
+    options: ["读日语书并记新词", "和老师一起吃饭", "借朋友的钱", "买电脑"],
+    answer: "读日语书并记新词",
+    speak: "きのう、田中さんは大学の図書館へ行きました。図書館で日本語の本を読んで、新しい言葉をノートに書きました。",
+    explanation: "课文第二句给出原因：日本語の本を読んで、新しい言葉をノートに書きました。",
+    tags: ["reading", "te-form", "vocab"]
+  },
+  {
+    id: "jp-reading-002",
+    track: "japanese",
+    module: "jp-reading",
+    type: "input",
+    prompt: "根据课文填空：図書館で日本語の本を___、新しい言葉をノートに書きました。",
+    context: {
+      title: "小课文：図書館で",
+      body: [
+        "きのう、田中さんは大学の図書館へ行きました。",
+        "図書館で日本語の本を読んで、新しい言葉をノートに書きました。",
+        "うちへ帰ってから、先生にメールを送りました。"
+      ],
+      translation: "昨天田中去了大学图书馆。在图书馆读了日语书，并把新词写在笔记本上。回家以后，给老师发了邮件。",
+      notes: ["読む 的て形是 読んで", "て形可以连接先后动作"]
+    },
+    accepted: ["読んで", "よんで"],
+    answer: "読んで",
+    speak: "図書館で日本語の本を読んで、新しい言葉をノートに書きました。",
+    explanation: "読む -> 読んで。这里不是单独背变化，而是放进课文动作链里记。",
+    tags: ["reading", "te-form", "verb"]
+  },
+  {
+    id: "jp-reading-003",
+    track: "japanese",
+    module: "jp-reading",
+    type: "arrange",
+    prompt: "组出长句：我用电脑写报告后，把邮件发给了老师。",
+    context: {
+      title: "长句骨架",
+      body: ["パソコンを使って、レポートを書いてから、先生にメールを送りました。"],
+      translation: "用电脑写完报告后，给老师发了邮件。",
+      notes: ["使って 表示使用某工具", "書いてから 表示写完之后", "先生に 表示邮件发送对象"]
+    },
+    tokens: ["パソコンを使って", "レポートを書いてから", "先生に", "メールを送りました"],
+    answer: ["パソコンを使って", "レポートを書いてから", "先生に", "メールを送りました"],
+    speak: "パソコンを使って、レポートを書いてから、先生にメールを送りました。",
+    explanation: "这个长句把 て形、から、に 的用法串在一起，适合整句记忆。",
+    tags: ["reading", "long-sentence", "te-form"]
+  },
+  {
+    id: "en-reading-001",
+    track: "english",
+    module: "en-reading",
+    type: "choice",
+    prompt: "In the passage, why did the engineer recommend monitoring?",
+    context: {
+      title: "Civil Engineering Long Sentence",
+      body: [
+        "During a site inspection, the engineer noticed small cracks near the retaining wall and recommended monitoring the foundation because uneven settlement could reduce long-term structural safety."
+      ],
+      translation: "现场检查时，工程师注意到挡土墙附近有细小裂缝，并建议监测地基，因为不均匀沉降可能降低长期结构安全性。",
+      notes: ["retaining wall = 挡土墙", "uneven settlement = 不均匀沉降", "long-term structural safety = 长期结构安全"]
+    },
+    options: [
+      "Uneven settlement could affect structural safety.",
+      "The wall was painted the wrong color.",
+      "The concrete had already been replaced.",
+      "The site inspection was cancelled."
+    ],
+    answer: "Uneven settlement could affect structural safety.",
+    speak: "During a site inspection, the engineer noticed small cracks near the retaining wall and recommended monitoring the foundation because uneven settlement could reduce long-term structural safety.",
+    explanation: "because 后面解释原因：uneven settlement could reduce long-term structural safety。",
+    tags: ["reading", "civil", "long-sentence"]
+  },
+  {
+    id: "en-reading-002",
+    track: "english",
+    module: "en-reading",
+    type: "input",
+    prompt: "Fill in the academic verb: The model was trained to ___ crack patterns in bridge images.",
+    context: {
+      title: "AI + Civil Engineering Sentence",
+      body: [
+        "The model was trained to identify crack patterns in bridge images so that engineers could prioritize detailed inspections more efficiently."
+      ],
+      translation: "该模型被训练用于识别桥梁图像中的裂缝模式，从而让工程师更高效地安排详细检查的优先级。",
+      notes: ["identify = 识别", "prioritize = 确定优先级", "inspection = 检查"]
+    },
+    accepted: ["identify", "detect"],
+    answer: "identify",
+    speak: "The model was trained to identify crack patterns in bridge images so that engineers could prioritize detailed inspections more efficiently.",
+    explanation: "identify/detect 都可用于“识别裂缝模式”。这里重点是把 AI 动词放进工程语境。",
+    tags: ["reading", "ai", "civil", "academic-verb"]
+  },
+  {
+    id: "en-reading-003",
+    track: "english",
+    module: "en-reading",
+    type: "arrange",
+    prompt: "Rebuild the sentence: 由于训练数据有限，模型在新工地上的泛化能力较弱。",
+    context: {
+      title: "Academic Sentence Pattern",
+      body: ["Because the training data was limited, the model generalized poorly to new construction sites."],
+      translation: "由于训练数据有限，模型在新工地上的泛化能力较弱。",
+      notes: ["Because + clause 放句首", "generalize to = 泛化到", "construction site = 工地"]
+    },
+    tokens: ["Because the training data was limited", "the model", "generalized poorly", "to new construction sites"],
+    answer: ["Because the training data was limited", "the model", "generalized poorly", "to new construction sites"],
+    speak: "Because the training data was limited, the model generalized poorly to new construction sites.",
+    explanation: "这句把原因状语从句和 AI 高频动词 generalize 放在一起练。",
+    tags: ["reading", "ai", "long-sentence"]
+  },
+  {
+    id: "tlp-passage-001",
+    track: "tractatus",
+    module: "tlp-passage",
+    type: "choice",
+    prompt: "这段话想帮助你区分什么？",
+    context: {
+      title: "入门段落：事实与对象",
+      body: [
+        "如果我们只列出桌子、书和房间，还没有说明世界中发生了什么。只有当我们说“书在桌子上”时，才描画了一个可能成立或不成立的事实。"
+      ],
+      translation: "这不是原书引文，而是入门改写：重点是把对象清单和事实结构分开。",
+      notes: ["对象：桌子、书、房间", "事实：书在桌子上", "命题：描画一种可能的事实"]
+    },
+    options: ["对象清单与事实结构", "数学计算与统计图表", "心理感受与伦理命令", "经验科学与历史叙事"],
+    answer: "对象清单与事实结构",
+    explanation: "这段用例子说明：光有对象不等于有事实，事实包含对象之间如何组合。",
+    tags: ["passage", "fact", "object"]
+  },
+  {
+    id: "tlp-passage-002",
+    track: "tractatus",
+    module: "tlp-passage",
+    type: "self",
+    prompt: "用自己的话复述这段：为什么“书在桌子上”比“书、桌子”更像一个事实？",
+    subprompt: "说完后按清晰度评分。",
+    context: {
+      title: "入门段落：事实与对象",
+      body: [
+        "如果我们只列出桌子、书和房间，还没有说明世界中发生了什么。只有当我们说“书在桌子上”时，才描画了一个可能成立或不成立的事实。"
+      ],
+      translation: "这不是原书引文，而是入门改写：重点是把对象清单和事实结构分开。",
+      notes: ["用一个生活例子解释即可", "不要急着背编号，先抓关系"]
+    },
+    checklist: ["是否说到对象之间的关系", "是否说明事实可以成立或不成立", "是否用了自己的例子"],
+    sample: "“书、桌子”只是两个对象的名字；“书在桌子上”说明了它们之间的一种排列关系，因此可以判断为真或假。",
+    explanation: "能把对象和关系分开，你就抓住了读这本书的一个入口。",
+    tags: ["passage", "fact", "object"]
+  }
+];
+
+function defaultState() {
+  return {
+    activeTrack: "japanese",
+    activeModule: "all",
+    mode: "due",
+    dailyGoal: 18,
+    activeCommuteSegment: "platform",
+    progress: {},
+    customCards: [],
+    generatedCards: [],
+    dailyLogs: [],
+    history: [],
+    queue: [],
+    currentId: null,
+    selected: null,
+    typed: "",
+    arranged: [],
+    submitted: false,
+    lastResult: null,
+    sampleOpen: false,
+    translationOpen: false,
+    syncText: "",
+    syncMessage: "",
+    gitSync: {
+      enabled: false,
+      token: "",
+      gistId: "",
+      filename: "triad-learning-data.json",
+      auto: true,
+      lastSync: "",
+      status: ""
+    }
+  };
+}
+
+let state = loadState();
+
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const base = defaultState();
+    if (!saved || typeof saved !== "object") return base;
+    return { ...base, ...saved, gitSync: { ...base.gitSync, ...(saved.gitSync || {}) }, queue: [], currentId: null };
+  } catch {
+    return defaultState();
+  }
+}
+
+function saveState() {
+  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, ...persisted } = state;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+}
+
+const app = typeof document !== "undefined" ? document.querySelector("#app") : null;
+let cloudSyncTimer = null;
+let cloudSyncInFlight = false;
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function normalize(value) {
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[。．.！!？?、,，;；:：'"“”‘’]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function todayKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function allCards() {
+  return [...cards, ...state.customCards, ...state.generatedCards];
+}
+
+function getTrack(id = state.activeTrack) {
+  return tracks.find((track) => track.id === id) || tracks[0];
+}
+
+function getCard(id = state.currentId) {
+  return allCards().find((card) => card.id === id) || null;
+}
+
+function cardProgress(cardId) {
+  return state.progress[cardId] || null;
+}
+
+function isDue(card) {
+  const progress = cardProgress(card.id);
+  return !progress || progress.due <= Date.now();
+}
+
+function filteredCards() {
+  return allCards().filter((card) => {
+    const byTrack = card.track === state.activeTrack;
+    const byModule = state.activeModule === "all" || card.module === state.activeModule;
+    return byTrack && byModule;
+  });
+}
+
+function shuffle(list) {
+  const result = [...list];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+function buildQueue(mode = state.mode) {
+  state.mode = mode;
+  const pool = filteredCards();
+  const due = pool.filter(isDue);
+  const weak = pool
+    .filter((card) => cardProgress(card.id))
+    .sort((a, b) => weakScore(b) - weakScore(a));
+  const unseen = pool.filter((card) => !cardProgress(card.id));
+  const profile = learningProfile(state.activeTrack);
+  let queue;
+
+  if (mode === "weak") {
+    queue = [...weak.filter((card) => weakScore(card) > 0), ...due, ...unseen];
+  } else if (mode === "adaptive") {
+    queue = buildSmartQueue(pool, profile);
+  } else if (mode === "mix") {
+    queue = shuffle(pool);
+  } else {
+    queue = [...due, ...unseen, ...shuffle(pool)];
+  }
+
+  const unique = [];
+  const seen = new Set();
+  for (const card of queue) {
+    if (!seen.has(card.id)) {
+      unique.push(card);
+      seen.add(card.id);
+    }
+  }
+
+  const targetSize = mode === "adaptive" ? profile.sessionSize : state.dailyGoal;
+  state.queue = unique.slice(0, targetSize).map((card) => card.id);
+  state.currentId = state.queue[0] || null;
+  resetAnswerState();
+  saveState();
+  render();
+  focusPracticeSoon();
+}
+
+function buildCommuteQueue(segmentId = state.activeCommuteSegment) {
+  const segment = getCommuteSegment(segmentId);
+  state.activeCommuteSegment = segment.id;
+  state.mode = "commute";
+  state.activeModule = "all";
+  const pool = allCards().filter((card) => segment.tracks.includes(card.track));
+  const queue = buildCommuteSmartQueue(pool, segment);
+  state.queue = queue.slice(0, segment.size).map((card) => card.id);
+  state.currentId = state.queue[0] || null;
+  resetAnswerState();
+  saveState();
+  render();
+  focusPracticeSoon();
+}
+
+function getCommuteSegment(id = state.activeCommuteSegment) {
+  return commuteSegments.find((segment) => segment.id === id) || commuteSegments[0];
+}
+
+function buildCommuteSmartQueue(pool, segment) {
+  const profiles = tracks.map((track) => learningProfile(track.id));
+  const dailyLogs = profiles.map((profile) => profile.dailyLog).filter(Boolean);
+  const dailySignals = [...new Set(profiles.flatMap((profile) => profile.dailySignals))];
+  const weakTags = [...new Set(profiles.flatMap((profile) => profile.weakTags))];
+  const seen = new Set();
+  const queue = [];
+  const due = pool.filter((card) => cardProgress(card.id) && isDue(card));
+  const todayExact = pool.filter((card) => dailyLogs.some((log) => card.sourceLogId === log.id));
+  const todaySignal = pool.filter((card) => cardMatchesSignals(card, dailySignals));
+  const weak = pool
+    .filter((card) => weakScore(card) > 0 || weakTags.some((tag) => cardTags(card).includes(tag)))
+    .sort((a, b) => weakScore(b) - weakScore(a));
+  const segmentType = pool.filter((card) => segment.types.includes(card.type));
+  const segmentForm = pool.filter((card) => segment.forms.some((form) => preferredCard(card, form)));
+  const activeTrackCards = pool.filter((card) => card.track === state.activeTrack);
+  const fallback = shuffle(pool);
+
+  pushBucket(queue, due, seen, Math.max(1, Math.round(segment.size * 0.25)));
+  pushBucket(queue, [...todayExact, ...todaySignal], seen, Math.max(1, Math.round(segment.size * 0.35)));
+  pushBucket(queue, weak, seen, Math.max(1, Math.round(segment.size * 0.2)));
+  pushBucket(queue, segmentType, seen, Math.max(1, Math.round(segment.size * 0.25)));
+  pushBucket(queue, segmentForm, seen, Math.max(1, Math.round(segment.size * 0.2)));
+  pushBucket(queue, activeTrackCards, seen, Math.max(1, Math.round(segment.size * 0.2)));
+  pushBucket(queue, fallback, seen, segment.size);
+  return queue;
+}
+
+function cardTags(card) {
+  return card.tags?.length ? card.tags : [card.module, card.type];
+}
+
+function accuracy(items) {
+  if (!items.length) return null;
+  const correct = items.filter((item) => item.correct).length;
+  return Math.round((correct / items.length) * 100);
+}
+
+function latestDailyLog(trackId = state.activeTrack) {
+  return state.dailyLogs
+    .filter((log) => log.track === trackId)
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)))[0] || null;
+}
+
+function formLabel(form) {
+  return {
+    context: "课文长句",
+    quiz: "做题反馈",
+    listening: "听力朗读",
+    speaking: "口语复述",
+    writing: "默写输出"
+  }[form] || "课文长句";
+}
+
+function preferredCard(card, form) {
+  if (form === "context") return Boolean(card.context);
+  if (form === "quiz") return card.type === "choice" || card.type === "input";
+  if (form === "listening") return Boolean(card.speak);
+  if (form === "speaking") return card.type === "self";
+  if (form === "writing") return card.type === "input" || card.type === "arrange";
+  return Boolean(card.context);
+}
+
+function sessionSizeForEnergy(energy) {
+  if (energy === "light") return 10;
+  if (energy === "intense") return 24;
+  return 18;
+}
+
+function extractLearningSignals(text) {
+  const normalized = String(text || "")
+    .replace(/[，。！？；：、,.!?;:"“”‘’（）()]/g, " ")
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const stop = new Set(["今天", "学习", "老师", "内容", "练习", "觉得", "比较", "还是", "the", "and", "that", "with", "for", "this"]);
+  const counts = {};
+  for (const token of normalized) {
+    if (token.length < 2 || stop.has(token.toLowerCase())) continue;
+    counts[token] = (counts[token] || 0) + 1;
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([token]) => token);
+}
+
+function cardMatchesSignals(card, signals) {
+  if (!signals?.length) return false;
+  const haystack = [
+    card.prompt,
+    card.answer,
+    card.explanation,
+    card.context?.title,
+    ...(Array.isArray(card.context?.body) ? card.context.body : [card.context?.body || ""]),
+    ...cardTags(card)
+  ]
+    .join(" ")
+    .toLowerCase();
+  return signals.some((signal) => haystack.includes(String(signal).toLowerCase()));
+}
+
+function pushBucket(target, bucket, seen, limit) {
+  let count = 0;
+  for (const card of bucket) {
+    if (count >= limit) break;
+    if (seen.has(card.id)) continue;
+    target.push(card);
+    seen.add(card.id);
+    count += 1;
+  }
+}
+
+function buildSmartQueue(pool, profile) {
+  const seen = new Set();
+  const queue = [];
+  const due = pool.filter((card) => cardProgress(card.id) && isDue(card));
+  const todayExact = pool.filter((card) => card.sourceLogId === profile.dailyLog?.id);
+  const todaySignal = pool.filter((card) => cardMatchesSignals(card, profile.dailySignals));
+  const today = [...todayExact, ...todaySignal];
+  const weak = pool
+    .filter((card) => weakScore(card) > 0 || profile.weakTags.some((tag) => cardTags(card).includes(tag)))
+    .sort((a, b) => weakScore(b) - weakScore(a));
+  const preferred = pool.filter((card) => preferredCard(card, profile.preferredForm));
+  const newContext = pool.filter((card) => !cardProgress(card.id) && card.context);
+  const remaining = shuffle(pool);
+  const slots = smartSlots(profile.sessionSize, profile.dailyLog);
+
+  pushBucket(queue, due, seen, slots.due);
+  pushBucket(queue, today, seen, slots.today);
+  pushBucket(queue, weak, seen, slots.weak);
+  pushBucket(queue, preferred, seen, slots.preferred);
+  pushBucket(queue, newContext, seen, slots.newContext);
+  pushBucket(queue, remaining, seen, profile.sessionSize);
+  return queue;
+}
+
+function smartSlots(sessionSize, log) {
+  const hasDailyLog = Boolean(log?.content || log?.difficulty);
+  return {
+    due: Math.max(2, Math.round(sessionSize * 0.3)),
+    today: hasDailyLog ? Math.max(3, Math.round(sessionSize * 0.28)) : Math.max(1, Math.round(sessionSize * 0.12)),
+    weak: Math.max(2, Math.round(sessionSize * 0.22)),
+    preferred: Math.max(2, Math.round(sessionSize * 0.14)),
+    newContext: Math.max(1, Math.round(sessionSize * 0.1))
+  };
+}
+
+function learningProfile(trackId) {
+  const track = getTrack(trackId);
+  const trackCards = allCards().filter((card) => card.track === trackId);
+  const attempts = state.history.filter((item) => item.track === trackId);
+  const failed = attempts.filter((item) => !item.correct);
+  const weakTagCounts = {};
+  const dailyLog = latestDailyLog(trackId);
+  const dailySignals = dailyLog
+    ? [...new Set([...(dailyLog.signals || []), ...extractLearningSignals(`${dailyLog.content || ""} ${dailyLog.difficulty || ""}`)])]
+    : [];
+  const preferredForm = dailyLog?.form || "context";
+  const sessionSize = sessionSizeForEnergy(dailyLog?.energy);
+
+  for (const item of failed) {
+    const card = allCards().find((entry) => entry.id === item.cardId);
+    if (!card) continue;
+    for (const tag of cardTags(card)) {
+      weakTagCounts[tag] = (weakTagCounts[tag] || 0) + 1;
+    }
+  }
+
+  const weakTags = Object.entries(weakTagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([tag]) => tag);
+
+  const moduleRows = track.modules.map((module) => {
+    const moduleCards = trackCards.filter((card) => card.module === module.id);
+    const moduleAttempts = attempts.filter((item) => item.module === module.id);
+    return {
+      id: module.id,
+      name: module.name,
+      attempts: moduleAttempts.length,
+      accuracy: accuracy(moduleAttempts),
+      unseen: moduleCards.filter((card) => !cardProgress(card.id)).length,
+      due: moduleCards.filter(isDue).length
+    };
+  });
+
+  const readingModule = track.modules.find((module) => /reading|passage/.test(module.id))?.id;
+  const weakModule = moduleRows.find((row) => row.attempts >= 2 && row.accuracy !== null && row.accuracy < 75);
+  const unseenModule = moduleRows.find((row) => row.unseen > 0);
+  const focusModule = weakModule?.id || readingModule || unseenModule?.id || "all";
+
+  const strategy = [
+    `保底复习：先处理到期卡，避免遗忘滚大`,
+    dailyLog ? `今日内容：围绕「${shortText(dailyLog.content || dailyLog.difficulty || "今日记录", 22)}」出题` : "今日内容：还没有记录，先用课文长句建立语境",
+    weakTags.length ? `弱项修补：优先 ${weakTags.join("、")}` : "弱项修补：先积累几次答题数据",
+    `形式偏好：今天偏向 ${formLabel(preferredForm)}`,
+    `强度：${sessionSize} 题左右`
+  ];
+
+  let advice = dailyLog
+    ? `今天按「${formLabel(preferredForm)}」来练，先贴近你记录的学习内容，再穿插到期复习和弱项。`
+    : "先记录今天学了什么，智能推荐会更像给你定制，而不是泛泛地抽题。";
+  if (attempts.length >= 6 && weakTags.length && dailyLog) {
+    advice = `今天重点是「${formLabel(preferredForm)}」加弱项 ${weakTags.join("、")}，推荐队列会先放今日内容和错题变体。`;
+  } else if (attempts.length >= 6 && moduleRows.every((row) => row.accuracy === null || row.accuracy >= 80)) {
+    advice = "当前正确率不错，可以增加未见长句和自评复述题，别只停在会选答案。";
+  }
+
+  return {
+    track,
+    attempts,
+    weakTags,
+    moduleRows,
+    focusModule,
+    dailyLog,
+    dailySignals,
+    preferredForm,
+    sessionSize,
+    strategy,
+    advice
+  };
+}
+
+function weakScore(card) {
+  const progress = cardProgress(card.id);
+  if (!progress) return 0;
+  return (progress.wrong || 0) * 3 + (progress.lapses || 0) * 4 - (progress.correct || 0);
+}
+
+function resetAnswerState() {
+  state.selected = null;
+  state.typed = "";
+  state.arranged = [];
+  state.submitted = false;
+  state.lastResult = null;
+  state.sampleOpen = false;
+  state.translationOpen = false;
+}
+
+function focusPracticeSoon() {
+  if (typeof window === "undefined" || !window.matchMedia?.("(max-width: 680px)").matches) return;
+  window.requestAnimationFrame?.(() => {
+    app.querySelector?.(".card")?.scrollIntoView({ block: "start", behavior: "smooth" });
+  });
+}
+
+function todayHistory() {
+  const key = todayKey();
+  return state.history.filter((item) => item.date === key);
+}
+
+function statsForTrack(trackId) {
+  const trackCards = allCards().filter((card) => card.track === trackId);
+  const due = trackCards.filter(isDue).length;
+  const seen = trackCards.filter((card) => cardProgress(card.id)).length;
+  const attempts = state.history.filter((item) => item.track === trackId);
+  const correct = attempts.filter((item) => item.correct).length;
+  const accuracy = attempts.length ? Math.round((correct / attempts.length) * 100) : 0;
+  const mastery = trackCards.length
+    ? Math.round(
+        (trackCards.reduce((sum, card) => {
+          const progress = cardProgress(card.id);
+          return sum + Math.min(progress?.interval || 0, 30) / 30;
+        }, 0) /
+          trackCards.length) *
+          100
+      )
+    : 0;
+  return { total: trackCards.length, due, seen, attempts: attempts.length, accuracy, mastery };
+}
+
+function trackCardsByModule(track) {
+  return [
+    { id: "all", name: "全部题型" },
+    ...track.modules
+  ];
+}
+
+function render() {
+  const track = getTrack();
+  const stats = statsForTrack(track.id);
+  const today = todayHistory();
+  const goal = state.dailyGoal > 0 ? state.dailyGoal : defaultState().dailyGoal;
+  const goalDone = Math.min(today.length, goal);
+  const goalPercent = Math.round((goalDone / goal) * 100);
+  document.documentElement.style.setProperty("--track-color", track.color);
+
+  app.innerHTML = `
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>三线学习训练器</h1>
+        <p>课文、长句、错题，随手练。</p>
+      </div>
+      <nav class="track-list" aria-label="学习科目">
+        ${tracks.map(renderTrackButton).join("")}
+      </nav>
+      <section class="side-section">
+        <h2>题组</h2>
+        <div class="module-list">
+          ${trackCardsByModule(track).map(renderModuleButton).join("")}
+        </div>
+      </section>
+      <section class="side-section">
+        <h2>模式</h2>
+        <div class="mode-row">
+          ${renderModeButton("due", "今日到期")}
+          ${renderModeButton("adaptive", "智能推荐")}
+          ${renderModeButton("weak", "弱项加练")}
+          ${renderModeButton("mix", "混合挑战")}
+        </div>
+      </section>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2>${escapeHtml(track.name)}</h2>
+          <p>${escapeHtml(track.summary)}</p>
+          <button class="plain-button primary mobile-start" data-action="adaptive-start">开始智能练习</button>
+        </div>
+        <div class="goal-box">
+          <div class="goal-line">
+            <span>今日完成</span>
+            <b>${goalDone}/${goal}</b>
+          </div>
+          <div class="meter" aria-hidden="true">
+            <div class="meter-fill" style="--meter: ${goalPercent}%"></div>
+          </div>
+        </div>
+      </header>
+      ${renderCommutePanel()}
+      <div class="grid">
+        ${renderPracticeCard()}
+        <div class="side-stack">
+          ${renderDailyPanel()}
+          ${renderStatsPanel(stats)}
+          ${renderProfilePanel()}
+          ${renderWeakPanel()}
+          ${renderHistoryPanel()}
+          ${renderCustomPanel()}
+          ${renderSyncPanel()}
+        </div>
+      </div>
+    </main>
+  `;
+
+  bindEvents();
+}
+
+function renderTrackButton(track) {
+  const stats = statsForTrack(track.id);
+  const active = track.id === state.activeTrack ? " is-active" : "";
+  return `
+    <button class="track-button${active}" data-action="track" data-track="${track.id}" style="--track-color: ${track.color}">
+      <span class="track-mark">${escapeHtml(track.mark)}</span>
+      <span>
+        <span class="track-title">${escapeHtml(track.name)}</span>
+        <span class="track-level">${escapeHtml(track.level)}</span>
+      </span>
+      <span class="track-due">${stats.due}</span>
+    </button>
+  `;
+}
+
+function renderModuleButton(module) {
+  const active = module.id === state.activeModule ? " is-active" : "";
+  return `<button class="module-button${active}" data-action="module" data-module="${module.id}">${escapeHtml(module.name)}</button>`;
+}
+
+function renderModeButton(mode, label) {
+  const active = mode === state.mode ? " is-active" : "";
+  return `<button class="mode-button${active}" data-action="mode" data-mode="${mode}">${escapeHtml(label)}</button>`;
+}
+
+function renderCommutePanel() {
+  const active = getCommuteSegment();
+  return `
+    <section class="commute-panel">
+      <div class="commute-head">
+        <div>
+          <h3>通勤模式</h3>
+          <p>南与野 → 赤羽 → 王子 → 东大前</p>
+        </div>
+        <button class="plain-button primary commute-start" data-action="commute-start" data-segment="${active.id}">开始本段</button>
+      </div>
+      <div class="commute-route" aria-label="通勤路线">
+        ${commuteSegments.map(renderCommuteButton).join("")}
+      </div>
+      <p class="commute-hint">${escapeHtml(active.hint)} · 约 ${active.size} 题</p>
+    </section>
+  `;
+}
+
+function renderCommuteButton(segment) {
+  const active = segment.id === state.activeCommuteSegment ? " is-active" : "";
+  return `
+    <button class="commute-button${active}" data-action="commute-segment" data-segment="${segment.id}">
+      <b>${escapeHtml(segment.name)}</b>
+      <span>${escapeHtml(segment.route)}</span>
+    </button>
+  `;
+}
+
+function renderPracticeCard() {
+  const card = getCard();
+  if (!card) {
+    return `
+      <section class="card">
+        <div class="empty-state">
+          <div>
+            <h3>准备开始</h3>
+            <p>建议先用智能推荐，系统会把课文长句和到期错题排在前面。</p>
+            <div class="start-actions">
+              <button class="plain-button primary" data-action="adaptive-start">智能推荐</button>
+              <button class="plain-button" data-action="start">当前模式</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  const track = getTrack(card.track);
+  const moduleName = track.modules.find((module) => module.id === card.module)?.name || "自定义";
+  const remaining = state.queue.length ? `${state.queue.indexOf(card.id) + 1}/${state.queue.length}` : "1/1";
+  const commute = state.mode === "commute" ? getCommuteSegment() : null;
+
+  return `
+    <section class="card">
+      <div class="card-header">
+        <div class="tag-row">
+          ${commute ? `<span class="tag">${escapeHtml(commute.name)}</span>` : ""}
+          ${state.mode === "commute" || card.track !== state.activeTrack ? `<span class="tag">${escapeHtml(track.name)}</span>` : ""}
+          <span class="tag">${escapeHtml(moduleName)}</span>
+          <span class="tag">${escapeHtml(typeLabel(card.type))}</span>
+          <span class="tag">${remaining}</span>
+        </div>
+        <div class="action-row" style="grid-auto-flow: column;">
+          ${card.speak ? `<button class="icon-button" data-action="speak" title="朗读">听</button>` : ""}
+          <button class="icon-button" data-action="skip" title="跳过">跳</button>
+        </div>
+      </div>
+      <div class="card-body">
+        ${renderContextBlock(card)}
+        <h3 class="prompt">${escapeHtml(card.prompt)}</h3>
+        ${card.subprompt ? `<p class="subprompt">${escapeHtml(card.subprompt)}</p>` : ""}
+        ${renderAnswerArea(card)}
+        ${renderFeedback(card)}
+      </div>
+      <div class="card-footer">
+        ${renderFooter(card)}
+      </div>
+    </section>
+  `;
+}
+
+function typeLabel(type) {
+  return {
+    choice: "选择",
+    input: "填空",
+    arrange: "组句",
+    self: "自评"
+  }[type] || "练习";
+}
+
+function renderContextBlock(card) {
+  if (!card.context) return "";
+  const body = Array.isArray(card.context.body) ? card.context.body : [card.context.body];
+  const notes = card.context.notes || [];
+  return `
+    <section class="context-block">
+      <div class="context-head">
+        <strong>${escapeHtml(card.context.title || "课文/长句")}</strong>
+        ${
+          card.context.translation
+            ? `<button class="plain-button context-toggle" data-action="toggle-translation">${state.translationOpen ? "收起译文" : "译文"}</button>`
+            : ""
+        }
+      </div>
+      <div class="context-text">
+        ${body.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
+      </div>
+      ${
+        notes.length
+          ? `<div class="context-notes">${notes.map((note) => `<span>${escapeHtml(note)}</span>`).join("")}</div>`
+          : ""
+      }
+      ${
+        state.translationOpen && card.context.translation
+          ? `<p class="context-translation">${escapeHtml(card.context.translation)}</p>`
+          : ""
+      }
+    </section>
+  `;
+}
+
+function renderAnswerArea(card) {
+  if (card.type === "choice") {
+    return `
+      <div class="answer-area">
+        ${card.options.map((option) => renderOption(card, option)).join("")}
+      </div>
+    `;
+  }
+
+  if (card.type === "input") {
+    return `
+      <div class="answer-area">
+        <label class="sr-only" for="typed-answer">答案</label>
+        <input id="typed-answer" class="text-answer" value="${escapeHtml(state.typed)}" data-action="typed" placeholder="输入答案" ${state.submitted ? "disabled" : ""} />
+      </div>
+    `;
+  }
+
+  if (card.type === "arrange") {
+    const selectedIndexes = new Set(state.arranged.map((item) => item.index));
+    return `
+      <div class="answer-area">
+        <div class="token-answer" aria-label="已选择">
+          ${
+            state.arranged.length
+              ? state.arranged.map((item, index) => `<button class="token-button" data-action="untoken" data-index="${index}">${escapeHtml(item.text)}</button>`).join("")
+              : `<span class="tag">点击词块组句</span>`
+          }
+        </div>
+        <div class="token-bank" aria-label="词块">
+          ${card.tokens
+            .map((token, index) => {
+              const disabled = selectedIndexes.has(index) || state.submitted ? "disabled" : "";
+              return `<button class="token-button" data-action="token" data-index="${index}" ${disabled}>${escapeHtml(token)}</button>`;
+            })
+            .join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  if (card.type === "self") {
+    return `
+      <div class="answer-area">
+        <ul class="weak-list">
+          ${card.checklist.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+        </ul>
+        ${
+          state.sampleOpen
+            ? `<div class="feedback good"><strong>参考回答</strong>${escapeHtml(card.sample)}</div>`
+            : `<button class="plain-button" data-action="sample">显示参考回答</button>`
+        }
+      </div>
+    `;
+  }
+
+  return "";
+}
+
+function renderOption(card, option) {
+  const isSelected = state.selected === option;
+  let status = "";
+  if (state.submitted) {
+    if (option === card.answer) status = " is-correct";
+    else if (isSelected) status = " is-wrong";
+  } else if (isSelected) {
+    status = " is-selected";
+  }
+  return `<button class="option-button${status}" data-action="option" data-option="${escapeHtml(option)}" ${state.submitted ? "disabled" : ""}>${escapeHtml(option)}</button>`;
+}
+
+function renderFeedback(card) {
+  if (!state.submitted) return "";
+  const good = state.lastResult?.correct;
+  const accepted = card.type === "input" ? `<br>答案：${escapeHtml(card.answer)}` : "";
+  const arranged = card.type === "arrange" ? `<br>目标：${escapeHtml(card.answer.join(" "))}` : "";
+  return `
+    <div class="feedback ${good ? "good" : "bad"}">
+      <strong>${good ? "答对了" : "这题先收进复习"}</strong>
+      ${escapeHtml(card.explanation || "")}${accepted}${arranged}
+    </div>
+  `;
+}
+
+function renderFooter(card) {
+  if (state.submitted || card.type === "self") {
+    return `
+      <div class="rating-row">
+        <button class="rating-button again" data-action="rate" data-rating="again">忘了</button>
+        <button class="rating-button hard" data-action="rate" data-rating="hard">模糊</button>
+        <button class="rating-button good" data-action="rate" data-rating="good">会了</button>
+      </div>
+    `;
+  }
+
+  return `
+    <button class="plain-button" data-action="reset-card">重来</button>
+    <button class="plain-button primary" data-action="submit">提交</button>
+  `;
+}
+
+function renderStatsPanel(stats) {
+  return `
+    <section class="stats-panel">
+      <h3 class="panel-title">进度</h3>
+      <div class="stat-grid">
+        <div class="stat"><b>${stats.due}</b><span>到期</span></div>
+        <div class="stat"><b>${stats.seen}/${stats.total}</b><span>已见</span></div>
+        <div class="stat"><b>${stats.accuracy}%</b><span>正确率</span></div>
+        <div class="stat"><b>${stats.mastery}%</b><span>掌握度</span></div>
+      </div>
+    </section>
+  `;
+}
+
+function renderDailyPanel() {
+  const log = latestDailyLog(state.activeTrack);
+  return `
+    <section class="custom-panel daily-panel">
+      <h3 class="panel-title">今日记录</h3>
+      <form data-action="daily-form">
+        <label>
+          今天学了什么
+          <textarea name="content" placeholder="例：第15课 てもいいですか / 土木 settlement 长句 / 事实与对象" required>${escapeHtml(log?.content || "")}</textarea>
+        </label>
+        <div class="form-grid">
+          <label>
+            形式
+            <select name="form">
+              ${renderSelectOption("context", "课文长句", log?.form || "context")}
+              ${renderSelectOption("quiz", "做题反馈", log?.form || "context")}
+              ${renderSelectOption("listening", "听力朗读", log?.form || "context")}
+              ${renderSelectOption("speaking", "口语复述", log?.form || "context")}
+              ${renderSelectOption("writing", "默写输出", log?.form || "context")}
+            </select>
+          </label>
+          <label>
+            状态
+            <select name="energy">
+              ${renderSelectOption("light", "轻量", log?.energy || "normal")}
+              ${renderSelectOption("normal", "正常", log?.energy || "normal")}
+              ${renderSelectOption("intense", "加强", log?.energy || "normal")}
+            </select>
+          </label>
+        </div>
+        <label>
+          今天卡住的点
+          <textarea name="difficulty" placeholder="例：て形变化慢；overfitting/generalize 不会用；事实和对象容易混">${escapeHtml(log?.difficulty || "")}</textarea>
+        </label>
+        <button class="plain-button primary" type="submit">保存今日策略</button>
+      </form>
+      ${
+        log
+          ? `<p class="daily-meta">已记录 ${escapeHtml(log.date)} · ${escapeHtml(formLabel(log.form))} · 关键词：${escapeHtml((log.signals || []).slice(0, 4).join("、") || "待积累")}</p>`
+          : `<p class="daily-meta">保存后，智能推荐会优先围绕今天的内容和形式出题。</p>`
+      }
+    </section>
+  `;
+}
+
+function renderSelectOption(value, label, selected) {
+  return `<option value="${value}" ${value === selected ? "selected" : ""}>${escapeHtml(label)}</option>`;
+}
+
+function renderProfilePanel() {
+  const profile = learningProfile(state.activeTrack);
+  const focus = profile.moduleRows.find((row) => row.id === profile.focusModule);
+  return `
+    <section class="tool-panel">
+      <h3 class="panel-title">学习档案</h3>
+      <p class="profile-advice">${escapeHtml(profile.advice)}</p>
+      <div class="chip-row">
+        <span class="chip">重点：${escapeHtml(focus?.name || "综合复习")}</span>
+        <span class="chip">形式：${escapeHtml(formLabel(profile.preferredForm))}</span>
+        <span class="chip">${profile.sessionSize} 题</span>
+        ${
+          profile.weakTags.length
+            ? profile.weakTags.map((tag) => `<span class="chip">${escapeHtml(tag)}</span>`).join("")
+            : `<span class="chip">先积累 6 次练习</span>`
+        }
+      </div>
+      <ol class="strategy-list">
+        ${profile.strategy.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ol>
+      <ul class="module-snapshot">
+        ${profile.moduleRows
+          .map((row) => {
+            const score = row.accuracy === null ? "未练" : `${row.accuracy}%`;
+            return `<li><span>${escapeHtml(row.name)}</span><b>${score}</b><small>未见 ${row.unseen} · 到期 ${row.due}</small></li>`;
+          })
+          .join("")}
+      </ul>
+      <button class="plain-button primary full-button" data-action="adaptive-start">按档案练</button>
+    </section>
+  `;
+}
+
+function renderWeakPanel() {
+  const weak = filteredCards()
+    .filter((card) => weakScore(card) > 0)
+    .sort((a, b) => weakScore(b) - weakScore(a))
+    .slice(0, 4);
+
+  return `
+    <section class="tool-panel">
+      <h3 class="panel-title">弱项</h3>
+      <ul class="weak-list">
+        ${
+          weak.length
+            ? weak
+                .map((card) => {
+                  const progress = cardProgress(card.id);
+                  return `<li>${escapeHtml(shortText(card.prompt, 46))}<small>错 ${progress?.wrong || 0} 次 · 间隔 ${progress?.interval || 0} 天</small></li>`;
+                })
+                .join("")
+            : `<li>当前题组没有明显弱项。<small>做几轮后这里会自动变化。</small></li>`
+        }
+      </ul>
+    </section>
+  `;
+}
+
+function renderHistoryPanel() {
+  const recent = state.history.slice(-5).reverse();
+  return `
+    <section class="tool-panel">
+      <h3 class="panel-title">最近</h3>
+      <ul class="history-list">
+        ${
+          recent.length
+            ? recent
+                .map((item) => {
+                  const card = allCards().find((entry) => entry.id === item.cardId);
+                  return `<li>${item.correct ? "✓" : "×"} ${escapeHtml(shortText(card?.prompt || item.cardId, 42))}<small>${escapeHtml(item.rating)} · ${escapeHtml(item.date)}</small></li>`;
+                })
+                .join("")
+            : `<li>还没有练习记录。<small>开始后会显示最近表现。</small></li>`
+        }
+      </ul>
+    </section>
+  `;
+}
+
+function renderCustomPanel() {
+  return `
+    <section class="custom-panel">
+      <h3 class="panel-title">自定义题</h3>
+      <form data-action="custom-form">
+        <label>
+          科目
+          <select name="track">
+            ${tracks.map((track) => `<option value="${track.id}" ${track.id === state.activeTrack ? "selected" : ""}>${escapeHtml(track.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          题目
+          <textarea name="prompt" required placeholder="例：settlement 在土木工程里是什么意思？"></textarea>
+        </label>
+        <label>
+          课文/长句
+          <textarea name="context" placeholder="可粘贴老师课文、英文长句或哲学段落，每行一句。"></textarea>
+        </label>
+        <label>
+          答案
+          <input name="answer" required placeholder="例：沉降" />
+        </label>
+        <label>
+          解释
+          <textarea name="explanation" placeholder="例：指地基或结构的下沉。"></textarea>
+        </label>
+        <button class="plain-button primary" type="submit">加入题库</button>
+      </form>
+    </section>
+  `;
+}
+
+function renderSyncPanel() {
+  const config = state.gitSync || defaultState().gitSync;
+  return `
+    <section class="custom-panel sync-panel">
+      <h3 class="panel-title">数据同步</h3>
+      <div class="cloud-box">
+        <h4>GitHub 云同步</h4>
+        <p class="daily-meta">适合电车上使用：网页放 GitHub Pages，进度放私有 Gist。Token 只保存在当前浏览器。</p>
+        <label>
+          GitHub Token
+          <input type="password" data-action="github-token" value="${escapeHtml(config.token || "")}" placeholder="只需要 gist 权限" autocomplete="off" />
+        </label>
+        <div class="form-grid">
+          <label>
+            Gist ID
+            <input data-action="github-gist-id" value="${escapeHtml(config.gistId || "")}" placeholder="空白时可创建" />
+          </label>
+          <label>
+            文件名
+            <input data-action="github-filename" value="${escapeHtml(config.filename || "triad-learning-data.json")}" />
+          </label>
+        </div>
+        <label class="check-row">
+          <input type="checkbox" data-action="github-auto" ${config.auto ? "checked" : ""} />
+          联网时自动同步
+        </label>
+        <div class="sync-actions cloud-actions">
+          <button class="plain-button" data-action="save-github-sync">保存配置</button>
+          <button class="plain-button" data-action="create-gist">创建云端</button>
+          <button class="plain-button primary" data-action="sync-github">立即同步</button>
+        </div>
+        <div class="sync-actions cloud-actions">
+          <button class="plain-button" data-action="pull-github">从云端拉取</button>
+          <button class="plain-button" data-action="push-github">上传本机</button>
+        </div>
+        <p class="daily-meta">${escapeHtml(config.status || "还未连接 GitHub。")}</p>
+        ${config.lastSync ? `<p class="daily-meta">上次同步：${escapeHtml(config.lastSync)}</p>` : ""}
+      </div>
+      <div class="sync-actions">
+        <button class="plain-button" data-action="export-data">生成备份</button>
+        <button class="plain-button" data-action="copy-data">复制</button>
+        <button class="plain-button" data-action="download-data">下载</button>
+      </div>
+      <label>
+        备份文本
+        <textarea data-action="sync-text" placeholder="在这里生成备份，或粘贴另一台设备导出的备份。">${escapeHtml(state.syncText || "")}</textarea>
+      </label>
+      <button class="plain-button primary full-button" data-action="import-data">导入并合并</button>
+      <p class="daily-meta">${escapeHtml(state.syncMessage || "手机和电脑各自保存 localStorage；用这里每天互传学习进度。")}</p>
+    </section>
+  `;
+}
+
+function shortText(text, length) {
+  const value = String(text);
+  return value.length > length ? `${value.slice(0, length)}...` : value;
+}
+
+function bindEvents() {
+  app.querySelectorAll("[data-action]").forEach((element) => {
+    const action = element.dataset.action;
+    if (action === "custom-form") {
+      element.addEventListener("submit", handleCustomSubmit);
+    } else if (action === "daily-form") {
+      element.addEventListener("submit", handleDailySubmit);
+    } else if (action === "sync-text") {
+      element.addEventListener("input", (event) => {
+        state.syncText = event.target.value;
+      });
+    } else if (action === "github-token") {
+      element.addEventListener("input", (event) => {
+        state.gitSync.token = event.target.value.trim();
+      });
+    } else if (action === "github-gist-id") {
+      element.addEventListener("input", (event) => {
+        state.gitSync.gistId = event.target.value.trim();
+      });
+    } else if (action === "github-filename") {
+      element.addEventListener("input", (event) => {
+        state.gitSync.filename = event.target.value.trim() || "triad-learning-data.json";
+      });
+    } else if (action === "github-auto") {
+      element.addEventListener("change", (event) => {
+        state.gitSync.auto = event.target.checked;
+        saveState();
+      });
+    } else if (action === "typed") {
+      element.addEventListener("input", (event) => {
+        state.typed = event.target.value;
+      });
+      element.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") submitAnswer();
+      });
+    } else {
+      element.addEventListener("click", handleAction);
+    }
+  });
+}
+
+function handleAction(event) {
+  const button = event.currentTarget;
+  const action = button.dataset.action;
+
+  if (action === "track") {
+    state.activeTrack = button.dataset.track;
+    state.activeModule = "all";
+    state.currentId = null;
+    state.queue = [];
+    resetAnswerState();
+    saveState();
+    render();
+    return;
+  }
+
+  if (action === "module") {
+    state.activeModule = button.dataset.module;
+    state.currentId = null;
+    state.queue = [];
+    resetAnswerState();
+    saveState();
+    render();
+    return;
+  }
+
+  if (action === "mode") {
+    buildQueue(button.dataset.mode);
+    return;
+  }
+
+  if (action === "start") {
+    buildQueue(state.mode);
+    return;
+  }
+
+  if (action === "adaptive-start") {
+    buildQueue("adaptive");
+    return;
+  }
+
+  if (action === "commute-segment") {
+    state.activeCommuteSegment = button.dataset.segment;
+    saveState();
+    render();
+    return;
+  }
+
+  if (action === "commute-start") {
+    buildCommuteQueue(button.dataset.segment);
+    return;
+  }
+
+  if (action === "option") {
+    state.selected = button.dataset.option;
+    render();
+    return;
+  }
+
+  if (action === "token") {
+    const card = getCard();
+    const index = Number(button.dataset.index);
+    state.arranged.push({ index, text: card.tokens[index] });
+    render();
+    return;
+  }
+
+  if (action === "untoken" && !state.submitted) {
+    const index = Number(button.dataset.index);
+    state.arranged.splice(index, 1);
+    render();
+    return;
+  }
+
+  if (action === "submit") {
+    submitAnswer();
+    return;
+  }
+
+  if (action === "reset-card") {
+    resetAnswerState();
+    render();
+    return;
+  }
+
+  if (action === "rate") {
+    rateCurrent(button.dataset.rating);
+    return;
+  }
+
+  if (action === "skip") {
+    moveNext(false);
+    return;
+  }
+
+  if (action === "speak") {
+    speakCurrent();
+    return;
+  }
+
+  if (action === "sample") {
+    state.sampleOpen = true;
+    render();
+    return;
+  }
+
+  if (action === "toggle-translation") {
+    state.translationOpen = !state.translationOpen;
+    render();
+    return;
+  }
+
+  if (action === "export-data") {
+    exportDataToText();
+    render();
+    return;
+  }
+
+  if (action === "copy-data") {
+    copySyncText();
+    return;
+  }
+
+  if (action === "download-data") {
+    downloadSyncText();
+    return;
+  }
+
+  if (action === "import-data") {
+    importDataFromText();
+    return;
+  }
+
+  if (action === "save-github-sync") {
+    saveGitSyncConfig();
+    return;
+  }
+
+  if (action === "create-gist") {
+    createGitHubGist();
+    return;
+  }
+
+  if (action === "sync-github") {
+    syncWithGitHub();
+    return;
+  }
+
+  if (action === "pull-github") {
+    pullFromGitHub();
+    return;
+  }
+
+  if (action === "push-github") {
+    pushToGitHub();
+  }
+}
+
+function submitAnswer() {
+  const card = getCard();
+  if (!card || state.submitted) return;
+  let correct = false;
+
+  if (card.type === "choice") {
+    if (!state.selected) return;
+    correct = state.selected === card.answer;
+  }
+
+  if (card.type === "input") {
+    const accepted = [card.answer, ...(card.accepted || [])].map(normalize);
+    correct = accepted.includes(normalize(state.typed));
+  }
+
+  if (card.type === "arrange") {
+    const answer = state.arranged.map((item) => item.text).join(" ");
+    correct = normalize(answer) === normalize(card.answer.join(" "));
+  }
+
+  state.submitted = true;
+  state.lastResult = { correct };
+  render();
+}
+
+function rateCurrent(rating) {
+  const card = getCard();
+  if (!card) return;
+  const correct = card.type === "self" ? rating !== "again" : Boolean(state.lastResult?.correct);
+  schedule(card, rating, correct);
+  maybeCreateReinforcement(card, rating, correct);
+  state.history.push({
+    date: todayKey(),
+    time: new Date().toISOString(),
+    cardId: card.id,
+    track: card.track,
+    module: card.module,
+    rating,
+    correct
+  });
+  state.history = state.history.slice(-400);
+  moveNext(true);
+  scheduleCloudSync();
+}
+
+function maybeCreateReinforcement(card, rating, correct) {
+  if (correct && rating === "good") return;
+  if (card.originId) return;
+  const progress = state.progress[card.id];
+  const pressure = (progress?.wrong || 0) + (progress?.lapses || 0);
+  if (pressure < 2 && rating !== "again") return;
+  if (state.generatedCards.some((item) => item.originId === card.id)) return;
+
+  const reinforcement = buildReinforcementCard(card);
+  if (!reinforcement) return;
+  state.generatedCards.push(reinforcement);
+  state.generatedCards = state.generatedCards.slice(-80);
+}
+
+function buildReinforcementCard(card) {
+  const base = {
+    id: `reinforce-${card.id}-${Date.now()}`,
+    originId: card.id,
+    track: card.track,
+    module: card.module,
+    context: card.context,
+    tags: [...new Set([...cardTags(card), "reinforcement"])],
+    explanation: `这是根据你的错题自动生成的巩固题。${card.explanation || ""}`
+  };
+
+  if (card.type === "choice" && String(card.answer).length <= 28) {
+    return {
+      ...base,
+      type: "input",
+      prompt: `不看选项，直接写答案：${card.prompt}`,
+      answer: card.answer,
+      accepted: [card.answer],
+      speak: card.speak
+    };
+  }
+
+  if (card.type === "arrange") {
+    const sentence = card.answer.join(" ");
+    return {
+      ...base,
+      type: "input",
+      prompt: "默写刚才那条长句或组句答案。",
+      answer: sentence,
+      accepted: [sentence],
+      speak: card.speak || sentence
+    };
+  }
+
+  return {
+    ...base,
+    type: "self",
+    prompt: `复述并解释：${card.prompt}`,
+    subprompt: "先看课文或长句，再用自己的话说一遍。",
+    checklist: ["是否说出核心答案", "是否回到课文或长句中的用法", "是否能举一个相似例子"],
+    sample: card.explanation || String(card.answer || "回到上下文复述这张卡。"),
+    speak: card.speak
+  };
+}
+
+function schedule(card, rating, correct) {
+  const previous = state.progress[card.id] || {
+    interval: 0,
+    ease: 2.4,
+    reps: 0,
+    lapses: 0,
+    correct: 0,
+    wrong: 0,
+    due: Date.now()
+  };
+  const progress = { ...previous };
+  progress.reps += 1;
+  progress.correct += correct ? 1 : 0;
+  progress.wrong += correct ? 0 : 1;
+
+  if (rating === "again") {
+    progress.interval = 0;
+    progress.ease = Math.max(1.3, progress.ease - 0.2);
+    progress.lapses += 1;
+    progress.due = Date.now() + 10 * 60 * 1000;
+  } else if (rating === "hard") {
+    progress.interval = Math.max(1, Math.round((progress.interval || 1) * 1.35));
+    progress.ease = Math.max(1.3, progress.ease - 0.05);
+    progress.due = Date.now() + progress.interval * DAY;
+  } else {
+    progress.interval = progress.interval ? Math.round(progress.interval * progress.ease) : 1;
+    progress.ease = Math.min(3.1, progress.ease + 0.05);
+    progress.due = Date.now() + progress.interval * DAY;
+  }
+
+  progress.lastSeen = Date.now();
+  state.progress[card.id] = progress;
+}
+
+function moveNext(removeCurrent) {
+  if (removeCurrent && state.currentId) {
+    state.queue = state.queue.filter((id) => id !== state.currentId);
+  } else if (state.currentId) {
+    const current = state.currentId;
+    state.queue = state.queue.filter((id) => id !== current);
+    state.queue.push(current);
+  }
+  state.currentId = state.queue[0] || null;
+  resetAnswerState();
+  saveState();
+  render();
+  focusPracticeSoon();
+}
+
+function speakCurrent() {
+  const card = getCard();
+  if (!card || !("speechSynthesis" in window)) return;
+  const utterance = new SpeechSynthesisUtterance(card.speak || contextSpeakText(card.context) || card.prompt);
+  utterance.lang = card.track === "japanese" ? "ja-JP" : "en-US";
+  utterance.rate = card.track === "japanese" ? 0.86 : 0.92;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
+
+function contextSpeakText(context) {
+  if (!context?.body) return "";
+  return Array.isArray(context.body) ? context.body.join(" ") : String(context.body);
+}
+
+function handleCustomSubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const trackId = String(data.get("track"));
+  const track = getTrack(trackId);
+  const prompt = String(data.get("prompt") || "").trim();
+  const answer = String(data.get("answer") || "").trim();
+  const explanation = String(data.get("explanation") || "").trim();
+  const contextText = String(data.get("context") || "").trim();
+  if (!prompt || !answer) return;
+
+  state.customCards.push({
+    id: `custom-${Date.now()}`,
+    track: trackId,
+    module: track.modules[0]?.id || "custom",
+    type: "input",
+    prompt,
+    answer,
+    accepted: [answer],
+    explanation: explanation || "自定义题。",
+    context: contextText
+      ? {
+          title: "我的课文/长句",
+          body: contextText.split(/\n+/).filter(Boolean),
+          translation: ""
+        }
+      : undefined,
+    tags: ["custom", contextText ? "reading" : "recall"]
+  });
+  form.reset();
+  saveState();
+  render();
+  scheduleCloudSync();
+}
+
+function handleDailySubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const trackId = state.activeTrack;
+  const date = todayKey();
+  const existing = state.dailyLogs.find((log) => log.track === trackId && log.date === date);
+  const content = String(data.get("content") || "").trim();
+  const difficulty = String(data.get("difficulty") || "").trim();
+  if (!content && !difficulty) return;
+
+  const log = {
+    id: existing?.id || `daily-${trackId}-${date}`,
+    track: trackId,
+    date,
+    content,
+    difficulty,
+    form: String(data.get("form") || "context"),
+    energy: String(data.get("energy") || "normal"),
+    signals: extractLearningSignals(`${content} ${difficulty}`),
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  state.dailyLogs = [
+    log,
+    ...state.dailyLogs.filter((item) => item.id !== log.id)
+  ].slice(0, 90);
+
+  state.generatedCards = [
+    ...state.generatedCards.filter((card) => card.sourceLogId !== log.id),
+    ...buildDailyCards(log)
+  ].slice(-120);
+
+  saveState();
+  buildQueue("adaptive");
+  scheduleCloudSync();
+}
+
+function persistedState() {
+  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, ...persisted } = state;
+  return {
+    ...persisted,
+    gitSync: persisted.gitSync ? { ...persisted.gitSync, token: "" } : undefined
+  };
+}
+
+function exportSnapshot() {
+  return {
+    app: "triad-learning-trainer",
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    data: persistedState()
+  };
+}
+
+function exportDataToText() {
+  state.syncText = JSON.stringify(exportSnapshot(), null, 2);
+  state.syncMessage = "已生成备份。可以复制到 iPhone，或下载后用 AirDrop/文件传过去。";
+}
+
+async function copySyncText() {
+  if (!state.syncText) exportDataToText();
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(state.syncText);
+      state.syncMessage = "已复制备份文本。";
+    } else {
+      state.syncMessage = "当前浏览器不能自动复制，请手动选中文本复制。";
+    }
+  } catch {
+    state.syncMessage = "复制失败，请手动选中文本复制。";
+  }
+  render();
+}
+
+function downloadSyncText() {
+  if (!state.syncText) exportDataToText();
+  try {
+    const blob = new Blob([state.syncText], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `learning-backup-${todayKey()}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    state.syncMessage = "已下载备份文件。";
+  } catch {
+    state.syncMessage = "下载失败，可以复制备份文本手动保存。";
+  }
+  render();
+}
+
+function importDataFromText() {
+  try {
+    const snapshot = JSON.parse(state.syncText || "");
+    const incoming = snapshot.data || snapshot;
+    mergeImportedState(incoming);
+    state.syncMessage = "导入完成，已合并两台设备的学习记录。";
+    state.syncText = "";
+    saveState();
+    render();
+    scheduleCloudSync();
+  } catch {
+    state.syncMessage = "导入失败：请确认粘贴的是完整 JSON 备份。";
+    render();
+  }
+}
+
+function gitConfig() {
+  const defaults = defaultState().gitSync;
+  state.gitSync = state.gitSync || {};
+  for (const [key, value] of Object.entries(defaults)) {
+    if (state.gitSync[key] === undefined) state.gitSync[key] = value;
+  }
+  state.gitSync.filename = state.gitSync.filename || "triad-learning-data.json";
+  return state.gitSync;
+}
+
+function saveGitSyncConfig() {
+  const config = gitConfig();
+  config.enabled = Boolean(config.token);
+  config.status = config.enabled
+    ? "GitHub 配置已保存。可以创建云端或立即同步。"
+    : "请先填写 GitHub Token。";
+  saveState();
+  render();
+}
+
+function githubReady(requireGist = true) {
+  const config = gitConfig();
+  if (!config.token) {
+    config.status = "缺少 GitHub Token。";
+    saveState();
+    render();
+    return false;
+  }
+  if (requireGist && !config.gistId) {
+    config.status = "缺少 Gist ID。可以先点“创建云端”。";
+    saveState();
+    render();
+    return false;
+  }
+  config.enabled = true;
+  return true;
+}
+
+function githubHeaders() {
+  return {
+    Authorization: `Bearer ${gitConfig().token}`,
+    Accept: "application/vnd.github+json",
+    "Content-Type": "application/json"
+  };
+}
+
+function gistPayload() {
+  const config = gitConfig();
+  return {
+    description: "Triad learning trainer sync data",
+    public: false,
+    files: {
+      [config.filename]: {
+        content: JSON.stringify(exportSnapshot(), null, 2)
+      }
+    }
+  };
+}
+
+async function createGitHubGist() {
+  if (!githubReady(false)) return;
+  const config = gitConfig();
+  config.status = "正在创建私有 Gist...";
+  saveState();
+  render();
+  try {
+    const response = await fetch("https://api.github.com/gists", {
+      method: "POST",
+      headers: githubHeaders(),
+      body: JSON.stringify(gistPayload())
+    });
+    if (!response.ok) throw new Error(`GitHub ${response.status}`);
+    const gist = await response.json();
+    config.gistId = gist.id;
+    config.enabled = true;
+    config.lastSync = new Date().toLocaleString();
+    config.status = "云端已创建并上传当前数据。";
+    saveState();
+  } catch (error) {
+    config.status = `创建失败：${error.message}`;
+  }
+  render();
+}
+
+function extractGistSnapshot(gist) {
+  const config = gitConfig();
+  const file = gist.files?.[config.filename] || Object.values(gist.files || {}).find((entry) => entry.filename?.endsWith(".json"));
+  if (!file?.content) throw new Error("Gist 中没有可用的 JSON 数据文件");
+  const snapshot = JSON.parse(file.content);
+  return snapshot.data || snapshot;
+}
+
+async function pullFromGitHub(options = {}) {
+  if (!githubReady(true)) return;
+  const config = gitConfig();
+  if (!options.silent) {
+    config.status = "正在从 GitHub 拉取...";
+    saveState();
+    render();
+  }
+  try {
+    const response = await fetch(`https://api.github.com/gists/${encodeURIComponent(config.gistId)}`, {
+      headers: githubHeaders()
+    });
+    if (!response.ok) throw new Error(`GitHub ${response.status}`);
+    const gist = await response.json();
+    mergeImportedState(extractGistSnapshot(gist));
+    config.lastSync = new Date().toLocaleString();
+    config.status = "已从云端拉取并合并。";
+    saveState();
+  } catch (error) {
+    config.status = `拉取失败：${error.message}`;
+  }
+  if (options.render !== false) render();
+}
+
+async function pushToGitHub(options = {}) {
+  if (!githubReady(false)) return;
+  const config = gitConfig();
+  if (!config.gistId) {
+    await createGitHubGist();
+    return;
+  }
+  if (!options.silent) {
+    config.status = "正在上传到 GitHub...";
+    saveState();
+    render();
+  }
+  try {
+    const response = await fetch(`https://api.github.com/gists/${encodeURIComponent(config.gistId)}`, {
+      method: "PATCH",
+      headers: githubHeaders(),
+      body: JSON.stringify(gistPayload())
+    });
+    if (!response.ok) throw new Error(`GitHub ${response.status}`);
+    config.enabled = true;
+    config.lastSync = new Date().toLocaleString();
+    config.status = "已上传本机数据到云端。";
+    saveState();
+  } catch (error) {
+    config.status = `上传失败：${error.message}`;
+  }
+  if (options.render !== false) render();
+}
+
+async function syncWithGitHub(options = {}) {
+  const config = gitConfig();
+  if (!githubReady(false)) return;
+  if (cloudSyncInFlight) return;
+  cloudSyncInFlight = true;
+  if (!options.silent) {
+    config.status = "正在云同步：先拉取合并，再上传...";
+    saveState();
+    render();
+  }
+  try {
+    if (!config.gistId) {
+      await createGitHubGist();
+    } else {
+      await pullFromGitHub({ silent: true, render: false });
+      await pushToGitHub({ silent: true, render: false });
+      config.status = "云同步完成。";
+      config.lastSync = new Date().toLocaleString();
+      saveState();
+    }
+  } finally {
+    cloudSyncInFlight = false;
+    if (options.render !== false) render();
+  }
+}
+
+function scheduleCloudSync() {
+  const config = gitConfig();
+  if (!config.auto || !config.enabled || !config.token || !config.gistId) return;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    config.status = "当前离线，本机已保存；下次联网可同步。";
+    saveState();
+    return;
+  }
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(() => {
+    syncWithGitHub({ silent: true });
+  }, 2500);
+}
+
+function syncOnStartup() {
+  const config = gitConfig();
+  if (!config.auto || !config.enabled || !config.token || !config.gistId) return;
+  setTimeout(() => {
+    syncWithGitHub({ silent: true });
+  }, 800);
+}
+
+function mergeImportedState(incoming) {
+  if (!incoming || typeof incoming !== "object") throw new Error("Invalid backup");
+  state.progress = mergeProgress(state.progress, incoming.progress || {});
+  state.customCards = mergeById(state.customCards, incoming.customCards || []);
+  state.generatedCards = mergeById(state.generatedCards, incoming.generatedCards || []).slice(-160);
+  state.dailyLogs = mergeById(state.dailyLogs, incoming.dailyLogs || [], "updatedAt").slice(0, 120);
+  state.history = mergeHistory(state.history, incoming.history || []).slice(-600);
+  state.dailyGoal = Number(incoming.dailyGoal || state.dailyGoal) || state.dailyGoal;
+  state.activeCommuteSegment = incoming.activeCommuteSegment || state.activeCommuteSegment;
+}
+
+function mergeById(local, incoming, timeKey = "createdAt") {
+  const map = new Map();
+  for (const item of [...local, ...incoming]) {
+    if (!item?.id) continue;
+    const existing = map.get(item.id);
+    if (!existing || String(item[timeKey] || item.updatedAt || "").localeCompare(String(existing[timeKey] || existing.updatedAt || "")) >= 0) {
+      map.set(item.id, item);
+    }
+  }
+  return [...map.values()];
+}
+
+function mergeProgress(local, incoming) {
+  const merged = { ...local };
+  for (const [cardId, progress] of Object.entries(incoming || {})) {
+    const existing = merged[cardId];
+    if (!existing || (progress.reps || 0) > (existing.reps || 0) || (progress.lastSeen || 0) > (existing.lastSeen || 0)) {
+      merged[cardId] = progress;
+    }
+  }
+  return merged;
+}
+
+function mergeHistory(local, incoming) {
+  const map = new Map();
+  for (const item of [...local, ...incoming]) {
+    const key = item.time || `${item.date}-${item.cardId}-${item.rating}`;
+    map.set(key, item);
+  }
+  return [...map.values()].sort((a, b) => String(a.time || a.date).localeCompare(String(b.time || b.date)));
+}
+
+function buildDailyCards(log) {
+  const track = getTrack(log.track);
+  const moduleId = track.modules.find((module) => /reading|passage/.test(module.id))?.id || track.modules[0]?.id || "custom";
+  const lines = splitLearningLines(log.content).slice(0, 3);
+  const context = {
+    title: `今日内容 · ${log.date}`,
+    body: lines.length ? lines : [log.content || log.difficulty],
+    translation: "",
+    notes: [
+      `形式：${formLabel(log.form)}`,
+      log.difficulty ? `难点：${shortText(log.difficulty, 20)}` : "先复述，再做题"
+    ]
+  };
+  const cards = [];
+
+  lines.forEach((line, index) => {
+    cards.push({
+      id: `daily-${log.track}-${log.date}-retell-${index}`,
+      sourceLogId: log.id,
+      track: log.track,
+      module: moduleId,
+      type: "self",
+      prompt: `复述今天这句：${shortText(line, 42)}`,
+      subprompt: "先看上下文，再用自己的话说一遍或写一遍。",
+      context,
+      checklist: dailyChecklist(log.track, log.form),
+      sample: line,
+      speak: log.track === "english" || log.track === "japanese" ? line : "",
+      explanation: "这是根据你的今日记录自动生成的复述题，帮助把当天内容转成可回忆材料。",
+      tags: ["daily", "context", log.form, ...log.signals]
+    });
+
+    if (log.form === "writing" || log.form === "context") {
+      cards.push({
+        id: `daily-${log.track}-${log.date}-write-${index}`,
+        sourceLogId: log.id,
+        track: log.track,
+        module: moduleId,
+        type: "input",
+        prompt: `默写今日关键句：${shortText(line, 18)}...`,
+        context,
+        answer: line,
+        accepted: [line],
+        speak: log.track === "english" || log.track === "japanese" ? line : "",
+        explanation: "不用追求一次完全写对，先把长句结构从眼熟变成能主动输出。",
+        tags: ["daily", "writing", "context", ...log.signals]
+      });
+    }
+  });
+
+  if (log.difficulty) {
+    cards.push({
+      id: `daily-${log.track}-${log.date}-difficulty`,
+      sourceLogId: log.id,
+      track: log.track,
+      module: moduleId,
+      type: "self",
+      prompt: `解释今天卡住的点：${shortText(log.difficulty, 48)}`,
+      subprompt: "说出哪里难、正确用法是什么、下次如何判断。",
+      context,
+      checklist: ["是否说清卡点", "是否给出正确例子", "是否说明下次怎么识别"],
+      sample: log.difficulty,
+      explanation: "把模糊难点说出来，比单纯重看一遍更能形成记忆。",
+      tags: ["daily", "weakness", ...log.signals]
+    });
+  }
+
+  return cards;
+}
+
+function splitLearningLines(text) {
+  return String(text || "")
+    .replace(/[。！？.!?]/g, "$&\n")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => line.length >= 4)
+    .slice(0, 6);
+}
+
+function dailyChecklist(trackId, form) {
+  if (form === "listening") return ["是否听出关键词", "是否能跟读一遍", "是否能说出句子大意"];
+  if (form === "speaking") return ["是否不用看全文也能复述", "是否说出一个例句", "是否卡顿少于三次"];
+  if (form === "writing") return ["是否写出核心结构", "是否检查助词/搭配", "是否能改写一个相似句"];
+  if (trackId === "tractatus") return ["是否抓住概念关系", "是否能举例", "是否避免只背术语"];
+  return ["是否理解上下文", "是否说出关键词", "是否能造一个相似句"];
+}
+
+function registerServiceWorker() {
+  if (typeof navigator === "undefined" || typeof location === "undefined") return;
+  if (!("serviceWorker" in navigator)) return;
+  const secureEnough = location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  if (!secureEnough) return;
+  navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+}
+
+if (typeof document !== "undefined") {
+  render();
+  registerServiceWorker();
+  syncOnStartup();
+}
+
+// 让纯逻辑可以在 Node 里被 require 进行单元测试（浏览器中 module 未定义，自动跳过）。
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    normalize,
+    shuffle,
+    extractLearningSignals,
+    splitLearningLines,
+    mergeById,
+    mergeProgress,
+    mergeHistory
+  };
+}
