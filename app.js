@@ -2000,6 +2000,11 @@ function isDue(card) {
   return !progress || progress.due <= Date.now();
 }
 
+// 默认队列只放"到期"或"从没见过"的卡，避免重新打开后已掌握、还没到复习时间的题反复出现。
+function isAvailable(card) {
+  return !cardProgress(card.id) || isDue(card);
+}
+
 function filteredCards() {
   return allCards().filter((card) => {
     const byTrack = card.track === state.activeTrack;
@@ -2035,7 +2040,7 @@ function buildQueue(mode = state.mode) {
   } else if (mode === "mix") {
     queue = shuffle(pool);
   } else {
-    queue = [...due, ...unseen, ...shuffle(pool)];
+    queue = [...due, ...unseen];
   }
 
   const unique = [];
@@ -2082,16 +2087,17 @@ function buildCommuteSmartQueue(pool, segment) {
   const weakTags = [...new Set(profiles.flatMap((profile) => profile.weakTags))];
   const seen = new Set();
   const queue = [];
-  const due = pool.filter((card) => cardProgress(card.id) && isDue(card));
-  const todayExact = pool.filter((card) => dailyLogs.some((log) => card.sourceLogId === log.id));
-  const todaySignal = pool.filter((card) => cardMatchesSignals(card, dailySignals));
-  const weak = pool
+  const available = pool.filter(isAvailable);
+  const due = available.filter((card) => cardProgress(card.id) && isDue(card));
+  const todayExact = available.filter((card) => dailyLogs.some((log) => card.sourceLogId === log.id));
+  const todaySignal = available.filter((card) => cardMatchesSignals(card, dailySignals));
+  const weak = available
     .filter((card) => weakScore(card) > 0 || weakTags.some((tag) => cardTags(card).includes(tag)))
     .sort((a, b) => weakScore(b) - weakScore(a));
-  const segmentType = pool.filter((card) => segment.types.includes(card.type));
-  const segmentForm = pool.filter((card) => segment.forms.some((form) => preferredCard(card, form)));
-  const activeTrackCards = pool.filter((card) => card.track === state.activeTrack);
-  const fallback = shuffle(pool);
+  const segmentType = available.filter((card) => segment.types.includes(card.type));
+  const segmentForm = available.filter((card) => segment.forms.some((form) => preferredCard(card, form)));
+  const activeTrackCards = available.filter((card) => card.track === state.activeTrack);
+  const fallback = shuffle(available);
 
   pushBucket(queue, due, seen, Math.max(1, Math.round(segment.size * 0.25)));
   pushBucket(queue, [...todayExact, ...todaySignal], seen, Math.max(1, Math.round(segment.size * 0.35)));
@@ -2100,6 +2106,8 @@ function buildCommuteSmartQueue(pool, segment) {
   pushBucket(queue, segmentForm, seen, Math.max(1, Math.round(segment.size * 0.2)));
   pushBucket(queue, activeTrackCards, seen, Math.max(1, Math.round(segment.size * 0.2)));
   pushBucket(queue, fallback, seen, segment.size);
+  // 兜底：当到期/未见的卡不足以填满本段时，才用全部题补齐，保证一段路有题可做。
+  pushBucket(queue, shuffle(pool), seen, segment.size);
   return queue;
 }
 
@@ -2191,16 +2199,17 @@ function pushBucket(target, bucket, seen, limit) {
 function buildSmartQueue(pool, profile) {
   const seen = new Set();
   const queue = [];
-  const due = pool.filter((card) => cardProgress(card.id) && isDue(card));
-  const todayExact = pool.filter((card) => card.sourceLogId === profile.dailyLog?.id);
-  const todaySignal = pool.filter((card) => cardMatchesSignals(card, profile.dailySignals));
+  const available = pool.filter(isAvailable);
+  const due = available.filter((card) => cardProgress(card.id) && isDue(card));
+  const todayExact = available.filter((card) => card.sourceLogId === profile.dailyLog?.id);
+  const todaySignal = available.filter((card) => cardMatchesSignals(card, profile.dailySignals));
   const today = [...todayExact, ...todaySignal];
-  const weak = pool
+  const weak = available
     .filter((card) => weakScore(card) > 0 || profile.weakTags.some((tag) => cardTags(card).includes(tag)))
     .sort((a, b) => weakScore(b) - weakScore(a));
-  const preferred = pool.filter((card) => preferredCard(card, profile.preferredForm));
-  const newContext = pool.filter((card) => !cardProgress(card.id) && card.context);
-  const remaining = shuffle(pool);
+  const preferred = available.filter((card) => preferredCard(card, profile.preferredForm));
+  const newContext = available.filter((card) => !cardProgress(card.id) && card.context);
+  const remaining = shuffle(available);
   const slots = smartSlots(profile.sessionSize, profile.dailyLog);
 
   pushBucket(queue, due, seen, slots.due);
