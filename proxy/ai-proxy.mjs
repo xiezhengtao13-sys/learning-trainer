@@ -100,6 +100,42 @@ function extractJson(text) {
   return JSON.parse(slice);
 }
 
+function buildAnalyzePrompt(text) {
+  return `请解析下面这句日语，面向以中文为母语的初级学习者。用简洁中文输出，分这几块（每块用小标题，之间空行）：
+1. 假名读音：给整句标注假名。
+2. 逐词拆解：每个词写「词 — 词性 — 意思」，一行一个。
+3. 语法点：助词、动词变形、句型，挑重点讲。
+4. 自然翻译：一句通顺的中文。
+不要输出 JSON 或代码块，直接用纯文本和换行。
+
+句子：${text}`;
+}
+
+async function callModel(provider, systemPrompt, userPrompt, temperature = 0.7) {
+  const apiRes = await fetch(provider.url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${provider.apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: provider.model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature,
+      stream: false
+    })
+  });
+  if (!apiRes.ok) {
+    const detail = await apiRes.text();
+    const error = new Error(`${provider.name} ${apiRes.status}`);
+    error.status = 502;
+    error.detail = detail.slice(0, 500);
+    throw error;
+  }
+  const data = await apiRes.json();
+  return data?.choices?.[0]?.message?.content || "";
+}
+
 const server = http.createServer((req, res) => {
   if (req.method === "OPTIONS") {
     cors(res);
@@ -118,7 +154,9 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
-  if (req.method !== "POST" || !req.url.startsWith("/generate")) {
+  const isGenerate = req.method === "POST" && req.url.startsWith("/generate");
+  const isAnalyze = req.method === "POST" && req.url.startsWith("/analyze");
+  if (!isGenerate && !isAnalyze) {
     send(res, 404, { error: "not found" });
     return;
   }
@@ -144,32 +182,22 @@ const server = http.createServer((req, res) => {
     }
 
     try {
-      const apiRes = await fetch(provider.url, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${provider.apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: provider.model,
-          messages: [
-            { role: "system", content: "你是严谨的学习出题助手，只输出 JSON。" },
-            { role: "user", content: buildPrompt(body) }
-          ],
-          temperature: 0.7,
-          stream: false
-        })
-      });
-      if (!apiRes.ok) {
-        const detail = await apiRes.text();
-        return send(res, 502, { error: `${provider.name} ${apiRes.status}`, detail: detail.slice(0, 500) });
+      if (isAnalyze) {
+        const text = String(body.text || "").trim();
+        if (!text) return send(res, 400, { error: "缺少要解析的 text" });
+        const rawAnalysis = await callModel(provider, "你是耐心的日语老师，用中文为初级学习者讲解，忠实于给定句子。", buildAnalyzePrompt(text), 0.3);
+        const analysis = rawAnalysis.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+        console.log(`[analyze] provider=${provider.name} -> ${analysis.length} 字`);
+        return send(res, 200, { analysis, provider: provider.name });
       }
-      const data = await apiRes.json();
-      const text = data?.choices?.[0]?.message?.content || "";
-      const parsed = extractJson(text);
+      const content = await callModel(provider, "你是严谨的学习出题助手，只输出 JSON。", buildPrompt(body));
+      const parsed = extractJson(content);
       const cards = Array.isArray(parsed.cards) ? parsed.cards : [];
       console.log(`[generate] provider=${provider.name} track=${body.track || "?"} -> ${cards.length} 题`);
       send(res, 200, { cards, provider: provider.name });
     } catch (error) {
-      console.error(`[generate] provider=${provider.name} 失败:`, error.message);
-      send(res, 500, { error: String(error.message || error) });
+      console.error(`[${isAnalyze ? "analyze" : "generate"}] provider=${provider.name} 失败:`, error.message);
+      send(res, error.status || 500, { error: String(error.message || error), detail: error.detail });
     }
   });
 });

@@ -70,7 +70,8 @@ const tracks = [
       { id: "en-reading", name: "长句精读" },
       { id: "en-civil", name: "土木词汇" },
       { id: "en-ai", name: "AI 学术英语" },
-      { id: "en-ielts", name: "雅思表达" }
+      { id: "en-ielts", name: "雅思表达" },
+      { id: "en-vocab", name: "生词本" }
     ]
   },
   {
@@ -1907,6 +1908,7 @@ function defaultState() {
     progress: {},
     customCards: [],
     generatedCards: [],
+    analyses: {},
     dailyLogs: [],
     history: [],
     queue: [],
@@ -1914,6 +1916,10 @@ function defaultState() {
     selected: null,
     typed: "",
     arranged: [],
+    tokenOrder: [],
+    cardShownAt: 0,
+    analysisOpen: false,
+    analyzing: false,
     submitted: false,
     lastResult: null,
     sampleOpen: false,
@@ -1950,7 +1956,7 @@ function loadState() {
 }
 
 function saveState() {
-  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, tokenOrder, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, ...persisted } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }
 
@@ -2024,6 +2030,19 @@ function shuffle(list) {
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
+}
+
+// 组句题词块的显示顺序：打乱 0..n-1，且尽量不等于原顺序（否则组句变成顺序点击）。
+function shuffledOrder(n) {
+  const base = Array.from({ length: n }, (_, index) => index);
+  if (n <= 1) return base;
+  let order = shuffle(base);
+  let tries = 0;
+  while (tries < 6 && order.every((value, index) => value === index)) {
+    order = shuffle(base);
+    tries += 1;
+  }
+  return order;
 }
 
 function buildQueue(mode = state.mode) {
@@ -2213,10 +2232,13 @@ function buildSmartQueue(pool, profile) {
     .sort((a, b) => weakScore(b) - weakScore(a));
   const preferred = available.filter((card) => preferredCard(card, profile.preferredForm));
   const newContext = available.filter((card) => !cardProgress(card.id) && card.context);
+  const slowSet = new Set(profile.slowModules || []);
+  const slow = available.filter((card) => slowSet.has(card.module));
   const remaining = shuffle(available);
   const slots = smartSlots(profile.sessionSize, profile.dailyLog);
 
   pushBucket(queue, due, seen, slots.due);
+  pushBucket(queue, slow, seen, slots.slow);
   pushBucket(queue, today, seen, slots.today);
   pushBucket(queue, weak, seen, slots.weak);
   pushBucket(queue, preferred, seen, slots.preferred);
@@ -2229,11 +2251,28 @@ function smartSlots(sessionSize, log) {
   const hasDailyLog = Boolean(log?.content || log?.difficulty);
   return {
     due: Math.max(2, Math.round(sessionSize * 0.3)),
+    slow: Math.max(2, Math.round(sessionSize * 0.18)),
     today: hasDailyLog ? Math.max(3, Math.round(sessionSize * 0.28)) : Math.max(1, Math.round(sessionSize * 0.12)),
     weak: Math.max(2, Math.round(sessionSize * 0.22)),
     preferred: Math.max(2, Math.round(sessionSize * 0.14)),
     newContext: Math.max(1, Math.round(sessionSize * 0.1))
   };
+}
+
+// 今日每个题组的答题速度（毫秒）：从带 ms 的历史里按模块聚合。
+function moduleSpeedToday(trackId) {
+  const key = todayKey();
+  const buckets = {};
+  for (const item of state.history) {
+    if (item.track !== trackId || item.date !== key || typeof item.ms !== "number") continue;
+    (buckets[item.module] = buckets[item.module] || []).push(item.ms);
+  }
+  const result = {};
+  for (const [moduleId, list] of Object.entries(buckets)) {
+    const avg = Math.round(list.reduce((sum, value) => sum + value, 0) / list.length);
+    result[moduleId] = { count: list.length, avg };
+  }
+  return result;
 }
 
 function learningProfile(trackId) {
@@ -2275,6 +2314,19 @@ function learningProfile(trackId) {
     };
   });
 
+  const speedByModule = moduleSpeedToday(trackId);
+  for (const row of moduleRows) {
+    const speed = speedByModule[row.id];
+    row.avgMs = speed ? speed.avg : null;
+    row.speedCount = speed ? speed.count : 0;
+  }
+  const timedRows = moduleRows.filter((row) => row.speedCount >= 2 && row.avgMs);
+  const speedBaseline = timedRows.length
+    ? [...timedRows.map((row) => row.avgMs)].sort((a, b) => a - b)[Math.floor(timedRows.length / 2)]
+    : null;
+  const slowModules = speedBaseline ? timedRows.filter((row) => row.avgMs > speedBaseline * 1.25).map((row) => row.id) : [];
+  const slowModuleNames = slowModules.map((id) => track.modules.find((module) => module.id === id)?.name || id);
+
   const readingModule = track.modules.find((module) => /reading|passage/.test(module.id))?.id;
   const weakModule = moduleRows.find((row) => row.attempts >= 2 && row.accuracy !== null && row.accuracy < 75);
   const unseenModule = moduleRows.find((row) => row.unseen > 0);
@@ -2285,8 +2337,9 @@ function learningProfile(trackId) {
     dailyLog ? `今日内容：围绕「${shortText(dailyLog.content || dailyLog.difficulty || "今日记录", 22)}」出题` : "今日内容：还没有记录，先用课文长句建立语境",
     weakTags.length ? `弱项修补：优先 ${weakTags.join("、")}` : "弱项修补：先积累几次答题数据",
     `形式偏好：今天偏向 ${formLabel(preferredForm)}`,
-    `强度：${sessionSize} 题左右`
-  ];
+    `强度：${sessionSize} 题左右`,
+    slowModuleNames.length ? `节奏：${slowModuleNames.join("、")} 今天偏慢，已多排练习` : ""
+  ].filter(Boolean);
 
   let advice = dailyLog
     ? `今天按「${formLabel(preferredForm)}」来练，先贴近你记录的学习内容，再穿插到期复习和弱项。`
@@ -2307,6 +2360,8 @@ function learningProfile(trackId) {
     dailySignals,
     preferredForm,
     sessionSize,
+    slowModules,
+    slowModuleNames,
     strategy,
     advice
   };
@@ -2326,6 +2381,10 @@ function resetAnswerState() {
   state.lastResult = null;
   state.sampleOpen = false;
   state.translationOpen = false;
+  state.analysisOpen = false;
+  const card = getCard();
+  state.tokenOrder = card && card.type === "arrange" ? shuffledOrder(card.tokens.length) : [];
+  state.cardShownAt = Date.now();
 }
 
 function focusPracticeSoon() {
@@ -2433,6 +2492,7 @@ function render() {
         ${renderPracticeCard()}
         <div class="side-stack">
           ${renderDailyPanel()}
+          ${renderVocabPanel()}
           ${renderAiPanel()}
           ${renderStatsPanel(stats)}
           ${renderProfilePanel()}
@@ -2561,6 +2621,7 @@ function renderPracticeCard() {
           <span class="tag">${remaining}</span>
         </div>
         <div class="action-row" style="grid-auto-flow: column;">
+          ${card.track === "japanese" ? `<button class="icon-button" data-action="analyze" title="本地模型解析这句日语">解析</button>` : ""}
           ${card.speak ? `<button class="icon-button" data-action="speak" title="朗读">听</button>` : ""}
           <button class="icon-button" data-action="skip" title="跳过">跳</button>
         </div>
@@ -2571,6 +2632,7 @@ function renderPracticeCard() {
         ${card.subprompt ? `<p class="subprompt">${escapeHtml(card.subprompt)}</p>` : ""}
         ${renderAnswerArea(card)}
         ${renderFeedback(card)}
+        ${renderAnalysisBlock(card)}
       </div>
       <div class="card-footer">
         ${renderFooter(card)}
@@ -2649,8 +2711,9 @@ function renderAnswerArea(card) {
           }
         </div>
         <div class="token-bank" aria-label="词块">
-          ${card.tokens
-            .map((token, index) => {
+          ${(state.tokenOrder && state.tokenOrder.length === card.tokens.length ? state.tokenOrder : card.tokens.map((_, index) => index))
+            .map((index) => {
+              const token = card.tokens[index];
               const disabled = selectedIndexes.has(index) || state.submitted ? "disabled" : "";
               return `<button class="token-button" data-action="token" data-index="${index}" ${disabled}>${escapeHtml(token)}</button>`;
             })
@@ -2701,6 +2764,78 @@ function renderFeedback(card) {
       ${escapeHtml(card.explanation || "")}${accepted}${arranged}
     </div>
   `;
+}
+
+function renderAnalysisBlock(card) {
+  if (card.track !== "japanese") return "";
+  if (state.analyzing) {
+    return `<div class="feedback analysis"><strong>本地模型解析中…</strong>正在解析这句日语，请稍候。</div>`;
+  }
+  const cached = state.analyses?.[card.id];
+  if (!state.analysisOpen || !cached) return "";
+  return `
+    <div class="feedback analysis">
+      <strong>日语解析（${escapeHtml(cached.provider === "deepseek" ? "DeepSeek" : "本地模型")}）</strong>
+      <div class="analysis-text">${escapeHtml(cached.text).replace(/\n/g, "<br>")}</div>
+    </div>
+  `;
+}
+
+function japaneseTextFor(card) {
+  if (card.speak) return String(card.speak);
+  if (card.context?.body) {
+    return Array.isArray(card.context.body) ? card.context.body.join(" ") : String(card.context.body);
+  }
+  if (card.type === "arrange" && Array.isArray(card.answer)) return card.answer.join("");
+  return String(card.prompt || "");
+}
+
+async function analyzeCurrentCard() {
+  const card = getCard();
+  if (!card || card.track !== "japanese") return;
+  // 已有解析：切换显示/隐藏
+  if (state.analyses?.[card.id]) {
+    state.analysisOpen = !state.analysisOpen;
+    render();
+    return;
+  }
+  const text = japaneseTextFor(card);
+  if (!text) {
+    showToast("这张卡没有可解析的日语句子");
+    return;
+  }
+  const url = String(state.aiProxyUrl || "").replace(/\/+$/, "");
+  if (!url) {
+    showToast("请先在「今日」里填本地代理地址");
+    return;
+  }
+  state.analyzing = true;
+  state.analysisOpen = true;
+  render();
+  try {
+    const response = await fetch(`${url}/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "local", text })
+    });
+    if (!response.ok) throw new Error(`代理返回 ${response.status}`);
+    const payload = await response.json();
+    const analysisText = String(payload.analysis || "").trim();
+    if (!analysisText) throw new Error("解析为空");
+    state.analyses = {
+      ...state.analyses,
+      [card.id]: { text: analysisText, provider: payload.provider || "local", at: new Date().toISOString() }
+    };
+    state.analyzing = false;
+    state.analysisOpen = true;
+    saveState();
+    render();
+    scheduleCloudSync();
+  } catch (error) {
+    state.analyzing = false;
+    render();
+    showToast(`解析失败：${error.message}。需要本地代理在运行（用 http://localhost 打开网页更稳）。`);
+  }
 }
 
 function renderFooter(card) {
@@ -2807,7 +2942,8 @@ function renderProfilePanel() {
         ${profile.moduleRows
           .map((row) => {
             const score = row.accuracy === null ? "未练" : `${row.accuracy}%`;
-            return `<li><span>${escapeHtml(row.name)}</span><b>${score}</b><small>未见 ${row.unseen} · 到期 ${row.due}</small></li>`;
+            const speed = row.avgMs ? ` · ${(row.avgMs / 1000).toFixed(1)}s/题${profile.slowModules.includes(row.id) ? " 偏慢" : ""}` : "";
+            return `<li><span>${escapeHtml(row.name)}</span><b>${score}</b><small>未见 ${row.unseen} · 到期 ${row.due}${speed}</small></li>`;
           })
           .join("")}
       </ul>
@@ -2958,6 +3094,8 @@ function bindEvents() {
     const action = element.dataset.action;
     if (action === "custom-form") {
       element.addEventListener("submit", handleCustomSubmit);
+    } else if (action === "vocab-form") {
+      element.addEventListener("submit", handleVocabSubmit);
     } else if (action === "daily-form") {
       element.addEventListener("submit", handleDailySubmit);
     } else if (action === "ai-url") {
@@ -3110,6 +3248,11 @@ function handleAction(event) {
     return;
   }
 
+  if (action === "analyze") {
+    analyzeCurrentCard();
+    return;
+  }
+
   if (action === "sample") {
     state.sampleOpen = true;
     render();
@@ -3202,6 +3345,8 @@ function rateCurrent(rating) {
   const card = getCard();
   if (!card) return;
   const correct = card.type === "self" ? rating !== "again" : Boolean(state.lastResult?.correct);
+  // 学习速度：本张卡从出现到评分的耗时（毫秒），上限 5 分钟，避免把放下手机的发呆算进去。
+  const ms = state.cardShownAt ? Math.min(Date.now() - state.cardShownAt, 5 * 60 * 1000) : null;
   schedule(card, rating, correct);
   maybeCreateReinforcement(card, rating, correct);
   state.history.push({
@@ -3211,7 +3356,8 @@ function rateCurrent(rating) {
     track: card.track,
     module: card.module,
     rating,
-    correct
+    correct,
+    ms
   });
   state.history = state.history.slice(-400);
   moveNext(true);
@@ -3378,6 +3524,36 @@ function handleCustomSubmit(event) {
   showToast("已加入题库");
 }
 
+function handleVocabSubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const word = String(data.get("word") || "").trim();
+  const meaning = String(data.get("meaning") || "").trim();
+  const example = String(data.get("example") || "").trim();
+  if (!word || !meaning) return;
+
+  state.customCards.push({
+    id: `vocab-${Date.now()}`,
+    track: "english",
+    module: "en-vocab",
+    type: "input",
+    word,
+    prompt: `「${word}」是什么意思？（中文）`,
+    answer: meaning,
+    accepted: [meaning],
+    speak: word,
+    context: example ? { title: "例句", body: [example], translation: "", notes: [] } : undefined,
+    explanation: `生词：${word} = ${meaning}`,
+    tags: ["vocab", "custom", "english"]
+  });
+  form.reset();
+  saveState();
+  render();
+  scheduleCloudSync();
+  showToast(`已加入生词：${word}`);
+}
+
 function handleDailySubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -3420,7 +3596,7 @@ function handleDailySubmit(event) {
 }
 
 function persistedState() {
-  const { queue, currentId, selected, typed, arranged, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, tokenOrder, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, ...persisted } = state;
   return {
     ...persisted,
     gitSync: persisted.gitSync ? { ...persisted.gitSync, token: "" } : undefined
@@ -3689,6 +3865,7 @@ function mergeImportedState(incoming) {
   state.generatedCards = mergeById(state.generatedCards, incoming.generatedCards || []).slice(-160);
   state.dailyLogs = mergeById(state.dailyLogs, incoming.dailyLogs || [], "updatedAt").slice(0, 120);
   state.history = mergeHistory(state.history, incoming.history || []).slice(-600);
+  state.analyses = { ...(state.analyses || {}), ...(incoming.analyses || {}) };
   state.dailyGoal = Number(incoming.dailyGoal || state.dailyGoal) || state.dailyGoal;
   state.activeCommuteSegment = incoming.activeCommuteSegment || state.activeCommuteSegment;
 }
@@ -3836,6 +4013,27 @@ function renderAiPanel() {
         ${log ? `用「${escapeHtml(getTrack(state.activeTrack).name)}」今日记录生成题` : "请先保存今日记录"}
       </button>
       <p class="daily-meta">${escapeHtml(state.aiMessage || "需要先在电脑上启动 proxy/ai-proxy.mjs（见 proxy/README.md）。")}</p>
+    </section>
+  `;
+}
+
+function renderVocabPanel() {
+  if (state.activeTrack !== "english") return "";
+  const words = state.customCards.filter((card) => card.module === "en-vocab");
+  const recent = words.slice(-6).reverse().map((card) => card.word).filter(Boolean);
+  return `
+    <section class="custom-panel vocab-panel" data-view="today">
+      <h3 class="panel-title">英语生词本</h3>
+      <p class="daily-meta">把今天遇到的生词加进来，会自动变成填空复习题，并进入智能推荐和同步。</p>
+      <form data-action="vocab-form">
+        <div class="form-grid">
+          <label>单词<input name="word" required placeholder="settlement" autocomplete="off" /></label>
+          <label>释义<input name="meaning" required placeholder="沉降" autocomplete="off" /></label>
+        </div>
+        <label>例句（可选）<input name="example" placeholder="The foundation showed excessive settlement." autocomplete="off" /></label>
+        <button class="plain-button primary full-button" type="submit">加入生词本</button>
+      </form>
+      <p class="daily-meta">已收 ${words.length} 个生词。${recent.length ? `最近：${escapeHtml(recent.join("、"))}` : ""}</p>
     </section>
   `;
 }

@@ -538,6 +538,16 @@ button {
   background: #fff1ef;
 }
 
+.feedback.analysis {
+  border-color: color-mix(in srgb, var(--blue) 40%, #ffffff);
+  background: #f2f8fd;
+}
+
+.analysis-text {
+  margin-top: 6px;
+  line-height: 1.75;
+}
+
 .feedback strong {
   display: block;
   margin-bottom: 6px;
