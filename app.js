@@ -2386,9 +2386,24 @@ function learningProfile(trackId) {
     advice = "当前正确率不错，可以增加未见长句和自评复述题，别只停在会选答案。";
   }
 
+  // 日语错因归因：把做错的题按题组归到「词汇 / 语法 / 组句 / 课文长句」，告诉用户错在哪类。
+  const jpReasonLabels = { "jp-vocab": "词汇", "jp-grammar": "语法", "jp-sentence": "组句", "jp-reading": "课文长句" };
+  const errorReasonCounts = {};
+  if (trackId === "japanese") {
+    for (const item of failed) {
+      const label = jpReasonLabels[item.module] || "其他";
+      errorReasonCounts[label] = (errorReasonCounts[label] || 0) + 1;
+    }
+  }
+  const errorReasons = Object.entries(errorReasonCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([label, count]) => ({ label, count }));
+
   return {
     track,
     attempts,
+    errorReasons,
     weakTags,
     moduleRows,
     focusModule,
@@ -2995,6 +3010,7 @@ function renderProfilePanel() {
     <section class="tool-panel" data-view="progress">
       <h3 class="panel-title">学习档案</h3>
       <p class="profile-advice">${escapeHtml(profile.advice)}</p>
+      ${profile.errorReasons?.length ? `<p class="profile-advice">近期日语错因：${profile.errorReasons.map((reason) => `${escapeHtml(reason.label)} ${reason.count}`).join(" · ")}</p>` : ""}
       <div class="chip-row">
         <span class="chip">重点：${escapeHtml(focus?.name || "综合复习")}</span>
         <span class="chip">形式：${escapeHtml(formLabel(profile.preferredForm))}</span>
