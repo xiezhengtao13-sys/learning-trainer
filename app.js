@@ -44,6 +44,50 @@ const commuteSegments = [
   }
 ];
 
+// 下班模式：回程路线、人比较累，所以题量更小、以选择/听读/复习为主，不安排打字和组句。
+const eveningSegments = [
+  {
+    id: "e-platform",
+    name: "站台/换乘",
+    route: "等车或走路时",
+    size: 3,
+    hint: "累了就只点选择题，随时可停。",
+    tracks: ["japanese", "english", "tractatus"],
+    types: ["choice"],
+    forms: ["quiz", "listening"]
+  },
+  {
+    id: "e-todaimae-oji",
+    name: "东大前→王子",
+    route: "地下铁段",
+    size: 6,
+    hint: "轻松回顾今天，多看少打字。",
+    tracks: ["japanese", "english", "tractatus"],
+    types: ["choice", "self"],
+    forms: ["quiz", "listening", "context"]
+  },
+  {
+    id: "e-oji-akabane",
+    name: "王子→赤羽",
+    route: "短段",
+    size: 4,
+    hint: "短选择，脑子放空也能做。",
+    tracks: ["japanese", "english"],
+    types: ["choice"],
+    forms: ["quiz"]
+  },
+  {
+    id: "e-akabane-minamiyono",
+    name: "赤羽→南与野",
+    route: "JR 段",
+    size: 6,
+    hint: "到家前再过一遍弱项和到期。",
+    tracks: ["japanese", "english", "tractatus"],
+    types: ["choice", "self"],
+    forms: ["quiz", "listening"]
+  }
+];
+
 const tracks = [
   {
     id: "japanese",
@@ -1407,28 +1451,6 @@ const cards = [
     tags: ["reading", "long-sentence", "te-form"]
   },
   {
-    id: "jp-reading-010",
-    track: "japanese",
-    module: "jp-reading",
-    type: "self",
-    prompt: "用日语说说你的一天：几点起床、有没有吃早饭、怎么去学校或公司。",
-    subprompt: "说完后按流利度评分。",
-    context: {
-      title: "小课文：田中さんの一日",
-      body: [
-        "田中さんは毎朝6時半に起きます。",
-        "朝ごはんを食べてから、駅まで歩いて、電車で会社へ行きます。",
-        "仕事は9時に始まって、6時に終わります。"
-      ],
-      translation: "田中每天早上六点半起床。吃完早饭后，走到车站，坐电车去公司。工作九点开始，六点结束。",
-      notes: ["可以套用课文的句型", "重点练 〜てから 和 で（交通手段）"]
-    },
-    checklist: ["是否说出起床时间", "是否用了〜てから 或 で（交通手段）", "是否说了到达的地方"],
-    sample: "わたしは毎朝7時に起きます。朝ごはんを食べてから、電車で学校へ行きます。",
-    explanation: "把课文换成自己的信息说一遍，是把句型变成自己能用的最快方式。",
-    tags: ["reading", "speaking", "te-form"]
-  },
-  {
     id: "en-civil-009",
     track: "english",
     module: "en-civil",
@@ -1905,6 +1927,7 @@ function defaultState() {
     mode: "due",
     dailyGoal: 18,
     activeCommuteSegment: "platform",
+    commuteDirection: "morning",
     progress: {},
     customCards: [],
     generatedCards: [],
@@ -1917,6 +1940,8 @@ function defaultState() {
     typed: "",
     arranged: [],
     tokenOrder: [],
+    optionOrder: [],
+    revealAnswer: false,
     cardShownAt: 0,
     analysisOpen: false,
     analyzing: false,
@@ -1958,7 +1983,7 @@ function loadState() {
 }
 
 function saveState() {
-  const { queue, currentId, selected, typed, arranged, tokenOrder, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, viewAnim, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, tokenOrder, optionOrder, revealAnswer, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, viewAnim, ...persisted } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }
 
@@ -2105,8 +2130,13 @@ function buildCommuteQueue(segmentId = state.activeCommuteSegment) {
   focusPracticeSoon();
 }
 
+function currentCommuteSegments() {
+  return state.commuteDirection === "evening" ? eveningSegments : commuteSegments;
+}
+
 function getCommuteSegment(id = state.activeCommuteSegment) {
-  return commuteSegments.find((segment) => segment.id === id) || commuteSegments[0];
+  const segments = currentCommuteSegments();
+  return segments.find((segment) => segment.id === id) || segments[0];
 }
 
 function buildCommuteSmartQueue(pool, segment) {
@@ -2388,8 +2418,10 @@ function resetAnswerState() {
   state.sampleOpen = false;
   state.translationOpen = false;
   state.analysisOpen = false;
+  state.revealAnswer = false;
   const card = getCard();
   state.tokenOrder = card && card.type === "arrange" ? shuffledOrder(card.tokens.length) : [];
+  state.optionOrder = card && card.type === "choice" ? shuffledOrder(card.options.length) : [];
   state.cardShownAt = Date.now();
 }
 
@@ -2566,19 +2598,25 @@ function renderModeButton(mode, label) {
 
 function renderCommutePanel() {
   const active = getCommuteSegment();
+  const evening = state.commuteDirection === "evening";
+  const route = evening ? "东大前 → 王子 → 赤羽 → 南与野" : "南与野 → 赤羽 → 王子 → 东大前";
   return `
     <section class="commute-panel" data-view="practice">
       <div class="commute-head">
         <div>
           <h3>通勤模式</h3>
-          <p>南与野 → 赤羽 → 王子 → 东大前</p>
+          <p>${escapeHtml(route)}</p>
         </div>
         <button class="plain-button primary commute-start" data-action="commute-start" data-segment="${active.id}">开始本段</button>
       </div>
-      <div class="commute-route" aria-label="通勤路线">
-        ${commuteSegments.map(renderCommuteButton).join("")}
+      <div class="commute-dir" role="group" aria-label="通勤方向">
+        <button class="dir-button${evening ? "" : " is-active"}" data-action="commute-dir" data-dir="morning">上班</button>
+        <button class="dir-button${evening ? " is-active" : ""}" data-action="commute-dir" data-dir="evening">下班·疲惫</button>
       </div>
-      <p class="commute-hint">${escapeHtml(active.hint)} · 约 ${active.size} 题</p>
+      <div class="commute-route" aria-label="通勤路线">
+        ${currentCommuteSegments().map(renderCommuteButton).join("")}
+      </div>
+      <p class="commute-hint">${escapeHtml(active.hint)} · 约 ${active.size} 题${evening ? " · 下班模式更轻" : ""}</p>
     </section>
   `;
 }
@@ -2629,7 +2667,7 @@ function renderPracticeCard() {
         </div>
         <div class="action-row" style="grid-auto-flow: column;">
           ${card.track === "japanese" ? `<button class="icon-button" data-action="analyze" title="本地模型解析这句日语">解析</button>` : ""}
-          ${card.speak ? `<button class="icon-button" data-action="speak" title="朗读">听</button>` : ""}
+          ${card.type !== "self" ? `<button class="icon-button" data-action="reveal" title="显示答案">答案</button>` : ""}
           <button class="icon-button" data-action="skip" title="跳过">跳</button>
         </div>
       </div>
@@ -2638,6 +2676,7 @@ function renderPracticeCard() {
         <h3 class="prompt">${escapeHtml(card.prompt)}</h3>
         ${card.subprompt ? `<p class="subprompt">${escapeHtml(card.subprompt)}</p>` : ""}
         ${renderAnswerArea(card)}
+        ${renderAnswerReveal(card)}
         ${renderFeedback(card)}
         ${renderAnalysisBlock(card)}
       </div>
@@ -2671,9 +2710,11 @@ function renderContextBlock(card) {
             : ""
         }
       </div>
-      <div class="context-text">
-        ${body.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
-      </div>
+      ${
+        card.type === "arrange" && !state.submitted
+          ? `<div class="context-text"><p class="context-hidden">（组句完成后显示原句）</p></div>`
+          : `<div class="context-text">${body.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}</div>`
+      }
       ${
         notes.length
           ? `<div class="context-notes">${notes.map((note) => `<span>${escapeHtml(note)}</span>`).join("")}</div>`
@@ -2690,9 +2731,13 @@ function renderContextBlock(card) {
 
 function renderAnswerArea(card) {
   if (card.type === "choice") {
+    const order =
+      state.optionOrder && state.optionOrder.length === card.options.length
+        ? state.optionOrder
+        : card.options.map((_, index) => index);
     return `
       <div class="answer-area">
-        ${card.options.map((option) => renderOption(card, option)).join("")}
+        ${order.map((index) => renderOption(card, card.options[index])).join("")}
       </div>
     `;
   }
@@ -2769,6 +2814,24 @@ function renderFeedback(card) {
     <div class="feedback ${good ? "good" : "bad"}">
       <strong>${good ? "答对了" : "这题先收进复习"}</strong>
       ${escapeHtml(card.explanation || "")}${accepted}${arranged}
+    </div>
+  `;
+}
+
+function renderAnswerReveal(card) {
+  if (!state.revealAnswer || state.submitted) return "";
+  let answer = "";
+  if (card.type === "choice" || card.type === "input") answer = card.answer;
+  else if (card.type === "arrange") answer = card.answer.join(" ");
+  else if (card.type === "self") answer = card.sample || "";
+  const alts =
+    card.type === "input" && card.accepted?.length > 1
+      ? `（也接受：${card.accepted.filter((item) => item !== card.answer).join("、")}）`
+      : "";
+  return `
+    <div class="feedback analysis">
+      <strong>答案</strong>${escapeHtml(answer)}${escapeHtml(alts)}
+      ${card.explanation ? `<br>${escapeHtml(card.explanation)}` : ""}
     </div>
   `;
 }
@@ -3202,6 +3265,14 @@ function handleAction(event) {
     return;
   }
 
+  if (action === "commute-dir") {
+    state.commuteDirection = button.dataset.dir === "evening" ? "evening" : "morning";
+    state.activeCommuteSegment = currentCommuteSegments()[0].id;
+    saveState();
+    render();
+    return;
+  }
+
   if (action === "commute-segment") {
     state.activeCommuteSegment = button.dataset.segment;
     saveState();
@@ -3263,6 +3334,12 @@ function handleAction(event) {
 
   if (action === "analyze") {
     analyzeCurrentCard();
+    return;
+  }
+
+  if (action === "reveal") {
+    state.revealAnswer = true;
+    render();
     return;
   }
 
@@ -3627,7 +3704,7 @@ function handleDailySubmit(event) {
 }
 
 function persistedState() {
-  const { queue, currentId, selected, typed, arranged, tokenOrder, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, viewAnim, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, tokenOrder, optionOrder, revealAnswer, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, viewAnim, ...persisted } = state;
   return {
     ...persisted,
     gitSync: persisted.gitSync ? { ...persisted.gitSync, token: "" } : undefined

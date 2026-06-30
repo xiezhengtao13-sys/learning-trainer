@@ -325,6 +325,31 @@ button {
   background: color-mix(in srgb, var(--track-color) 9%, #ffffff);
 }
 
+.commute-dir {
+  display: inline-flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.dir-button {
+  min-height: 36px;
+  padding: 6px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.dir-button.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(22, 33, 44, 0.12);
+}
+
 .card,
 .tool-panel,
 .stats-panel,
@@ -546,6 +571,12 @@ button {
 .analysis-text {
   margin-top: 6px;
   line-height: 1.75;
+}
+
+.context-hidden {
+  margin: 0;
+  color: var(--muted);
+  font-style: italic;
 }
 
 .feedback strong {
