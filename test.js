@@ -4,6 +4,7 @@ const assert = require("assert");
 const {
   normalize,
   shuffle,
+  shuffledOrder,
   extractLearningSignals,
   splitLearningLines,
   mergeById,
@@ -48,6 +49,19 @@ test("shuffle 分布大致均匀（首位不固定）", () => {
   for (const key of [0, 1, 2, 3]) {
     // 期望 ~1000，给宽松区间，仅用于发现严重偏置
     assert.ok(counts[key] > 750 && counts[key] < 1250, `位置 ${key} 出现 ${counts[key]} 次，疑似偏置`);
+  }
+});
+
+test("shuffledOrder 是 0..n-1 的排列，且 n>1 时不等于原顺序", () => {
+  assert.deepStrictEqual(shuffledOrder(0), []);
+  assert.deepStrictEqual(shuffledOrder(1), [0]);
+  for (let n = 2; n <= 6; n += 1) {
+    for (let trial = 0; trial < 50; trial += 1) {
+      const order = shuffledOrder(n);
+      assert.strictEqual(order.length, n);
+      assert.deepStrictEqual([...order].sort((a, b) => a - b), Array.from({ length: n }, (_, i) => i), "应是 0..n-1 的排列");
+      assert.ok(order.some((value, index) => value !== index), `n=${n} 不应等于原顺序（组句题会变成顺序点击）`);
+    }
   }
 });
 

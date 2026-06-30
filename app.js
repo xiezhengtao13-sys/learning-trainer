@@ -1927,8 +1927,10 @@ function defaultState() {
     syncText: "",
     syncMessage: "",
     toast: "",
+    viewAnim: false,
     aiProxyUrl: "http://127.0.0.1:8799",
     aiProvider: "deepseek",
+    analyzeProvider: "local",
     aiMessage: "",
     gitSync: {
       enabled: false,
@@ -1956,7 +1958,7 @@ function loadState() {
 }
 
 function saveState() {
-  const { queue, currentId, selected, typed, arranged, tokenOrder, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, tokenOrder, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, viewAnim, ...persisted } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }
 
@@ -2038,9 +2040,13 @@ function shuffledOrder(n) {
   if (n <= 1) return base;
   let order = shuffle(base);
   let tries = 0;
-  while (tries < 6 && order.every((value, index) => value === index)) {
+  while (tries < 8 && order.every((value, index) => value === index)) {
     order = shuffle(base);
     tries += 1;
+  }
+  // 仍是原顺序时强制交换前两个，保证词块不会按答案顺序排列。
+  if (order.every((value, index) => value === index)) {
+    [order[0], order[1]] = [order[1], order[0]];
   }
   return order;
 }
@@ -2470,7 +2476,7 @@ function render() {
         </div>
       </section>
     </aside>
-    <main class="main">
+    <main class="main${state.viewAnim ? " view-enter" : ""}">
       <header class="topbar" data-view="practice">
         <div>
           <h2>${escapeHtml(track.name)}</h2>
@@ -2508,6 +2514,7 @@ function render() {
   `;
 
   app.dataset.view = state.activeView || "practice";
+  state.viewAnim = false;
   bindEvents();
 }
 
@@ -2816,7 +2823,7 @@ async function analyzeCurrentCard() {
     const response = await fetch(`${url}/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ provider: "local", text })
+      body: JSON.stringify({ provider: state.analyzeProvider || "local", text })
     });
     if (!response.ok) throw new Error(`代理返回 ${response.status}`);
     const payload = await response.json();
@@ -3107,6 +3114,11 @@ function bindEvents() {
         state.aiProvider = event.target.value;
         saveState();
       });
+    } else if (action === "analyze-provider") {
+      element.addEventListener("change", (event) => {
+        state.analyzeProvider = event.target.value;
+        saveState();
+      });
     } else if (action === "sync-text") {
       element.addEventListener("input", (event) => {
         state.syncText = event.target.value;
@@ -3147,6 +3159,7 @@ function handleAction(event) {
 
   if (action === "view") {
     state.activeView = button.dataset.tab;
+    state.viewAnim = true;
     saveState();
     render();
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
@@ -3533,8 +3546,11 @@ function handleVocabSubmit(event) {
   const example = String(data.get("example") || "").trim();
   if (!word || !meaning) return;
 
+  const base = Date.now();
+  const context = example ? { title: "例句", body: [example], translation: "", notes: [] } : undefined;
+  // 正向：看英文写中文意思
   state.customCards.push({
-    id: `vocab-${Date.now()}`,
+    id: `vocab-${base}`,
     track: "english",
     module: "en-vocab",
     type: "input",
@@ -3543,15 +3559,30 @@ function handleVocabSubmit(event) {
     answer: meaning,
     accepted: [meaning],
     speak: word,
-    context: example ? { title: "例句", body: [example], translation: "", notes: [] } : undefined,
+    context,
     explanation: `生词：${word} = ${meaning}`,
     tags: ["vocab", "custom", "english"]
+  });
+  // 反向：看中文意思默写英文单词
+  state.customCards.push({
+    id: `vocab-${base}-r`,
+    track: "english",
+    module: "en-vocab",
+    type: "input",
+    word,
+    prompt: `「${meaning}」对应的英语单词？`,
+    answer: word,
+    accepted: [word],
+    speak: word,
+    context,
+    explanation: `生词：${word} = ${meaning}`,
+    tags: ["vocab", "custom", "english", "reverse"]
   });
   form.reset();
   saveState();
   render();
   scheduleCloudSync();
-  showToast(`已加入生词：${word}`);
+  showToast(`已加入生词：${word}（正反两张卡）`);
 }
 
 function handleDailySubmit(event) {
@@ -3596,7 +3627,7 @@ function handleDailySubmit(event) {
 }
 
 function persistedState() {
-  const { queue, currentId, selected, typed, arranged, tokenOrder, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, tokenOrder, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, viewAnim, ...persisted } = state;
   return {
     ...persisted,
     gitSync: persisted.gitSync ? { ...persisted.gitSync, token: "" } : undefined
@@ -3992,10 +4023,11 @@ function dailyChecklist(trackId, form) {
 function renderAiPanel() {
   const log = latestDailyLog(state.activeTrack);
   const provider = state.aiProvider || "deepseek";
+  const analyzeProvider = state.analyzeProvider || "local";
   return `
     <section class="custom-panel ai-panel" data-view="today">
-      <h3 class="panel-title">AI 出题（本地代理）</h3>
-      <p class="daily-meta">在电脑上跑一个本地代理，就能根据「今日记录」自动生成题目，可切换「本地模型 / DeepSeek」。生成的题进入题库，并会随 Gist 同步到手机。密钥只在你电脑上，不进前端、不进聊天。</p>
+      <h3 class="panel-title">AI 出题与解析（本地代理）</h3>
+      <p class="daily-meta">在电脑上跑一个本地代理，就能根据「今日记录」自动生成题目、解析日语句子，可切换「本地模型 / DeepSeek」。生成的题和解析进入题库并随 Gist 同步到手机。密钥只在你电脑上，不进前端、不进聊天。</p>
       <div class="form-grid">
         <label>
           出题来源
@@ -4005,10 +4037,17 @@ function renderAiPanel() {
           </select>
         </label>
         <label>
-          本地代理地址
-          <input data-action="ai-url" value="${escapeHtml(state.aiProxyUrl || "")}" placeholder="http://127.0.0.1:8799" autocomplete="off" />
+          解析来源（日语）
+          <select data-action="analyze-provider">
+            ${renderSelectOption("local", "本地模型", analyzeProvider)}
+            ${renderSelectOption("deepseek", "DeepSeek API", analyzeProvider)}
+          </select>
         </label>
       </div>
+      <label>
+        本地代理地址
+        <input data-action="ai-url" value="${escapeHtml(state.aiProxyUrl || "")}" placeholder="http://127.0.0.1:8799" autocomplete="off" />
+      </label>
       <button class="plain-button primary full-button" data-action="ai-generate" ${log ? "" : "disabled"}>
         ${log ? `用「${escapeHtml(getTrack(state.activeTrack).name)}」今日记录生成题` : "请先保存今日记录"}
       </button>
@@ -4019,7 +4058,7 @@ function renderAiPanel() {
 
 function renderVocabPanel() {
   if (state.activeTrack !== "english") return "";
-  const words = state.customCards.filter((card) => card.module === "en-vocab");
+  const words = state.customCards.filter((card) => card.module === "en-vocab" && !card.tags?.includes("reverse"));
   const recent = words.slice(-6).reverse().map((card) => card.word).filter(Boolean);
   return `
     <section class="custom-panel vocab-panel" data-view="today">
@@ -4166,6 +4205,7 @@ if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     normalize,
     shuffle,
+    shuffledOrder,
     extractLearningSignals,
     splitLearningLines,
     mergeById,

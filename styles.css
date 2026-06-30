@@ -863,6 +863,41 @@ button {
   }
 }
 
+/* 切换标签时的进入动效 */
+.main.view-enter {
+  animation: view-enter 0.24s ease;
+}
+
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 触摸按下的轻微回弹，给一点触觉反馈 */
+.track-button:active,
+.module-button:active,
+.mode-button:active,
+.plain-button:active,
+.icon-button:active,
+.option-button:active,
+.token-button:active,
+.rating-button:active,
+.tab-button:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main.view-enter {
+    animation: none;
+  }
+}
+
 @media (max-width: 980px) {
   .app-shell {
     display: block;
