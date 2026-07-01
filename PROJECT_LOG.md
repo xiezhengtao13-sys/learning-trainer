@@ -210,6 +210,14 @@
 直接用 history 里的 `module` 字段，零新增标签、可离线；错的内容已经由 `weakTags` 喂给推荐。
 更细的「汉字读音」细分与模型版错因解释留待后续（见未完成清单 1）。
 
+### 16. 日语卡片标签精细化 + DeepSeek 学习诊断 + 扩题（2026-06-30 深夜）
+
+一次性解决项目日志里两个高优先待办：
+
+- **卡片标签精细化**：全部 43 张日语卡补充细粒度 tags（kanji-reading / particle / conjugation / word-order / te-form 等），learningProfile 新增 tagReasons 细粒度归因，学习档案同时显示题组归因和标签归因。
+- **DeepSeek 学习诊断**：proxy 新增 POST /diagnose 端点，前端新增「学习诊断」面板（renderDiagnosisPanel / handleDiagnose），DeepSeek 分析错题模式并生成针对性练习题，诊断结果 + focusCards 随 Gist 同步到手机。
+- **扩题 +38 张（119→157）**：日语 +20（Minna 16+ 语法/可能形/受身形/使役/拟声拟态词/新课文）、英语 +10（SHM/data drift/transfer learning/prestressed concrete/shear/academic phrases）、哲学 +8（TLP 1-2.063 链/语言界限/沉默）。
+
 ## 关键设计决策
 
 ### 为什么不是直接用 Git 命令同步？
@@ -267,14 +275,12 @@ key 只从环境变量读，只监听 127.0.0.1，前端通过它间接调用。
 
 ## 后续待办
 
-### 未完成清单（截至 2026-06-30）
+### 未完成清单（截至 2026-06-30，更新于同日深夜）
 
-核心功能都已落地，剩下的都是增强 / 打磨 / 内容，按优先级排：
+**高优先 —— 全部完成 ✅**
 
-**高优先（最能提升学习效果）**
-
-1. **日语错因分析**（部分完成）：✅ 已做**按题组归因版**——做错的日语题按「词汇 / 语法 / 组句 / 课文长句」归类，显示在学习档案（如"近期日语错因：语法 3 · 词汇 1"），错的内容已通过 `weakTags` 反馈给智能推荐。⬜ 待做：更细的「汉字读音」细分（需给卡片打 `kanji-reading` 标签）；复用 `/analyze` 的模型版错因解释（题目 + 用户错答 → 模型指出错在哪、下次怎么判断）。
-2. **继续扩题**（持续，简单但费时）：日语 Minna 16+、英语工程/AI 长句、《逻辑哲学论》编号命题导读 / 概念图。
+1. **日语错因分析**（完成）：✅ 已给全部 43 张日语卡打上细粒度标签（`kanji-reading` / `particle` / `conjugation` / `word-order` / `te-form` / `sentence-pattern` 等），学习档案同时显示**题组归因**（如"词汇 3 · 语法 1"）和**标签细粒度归因**（如"汉字读音 5 · 助词 3 · て形 2"）。✅ 新增 `/diagnose` 代理端点 + 前端「学习诊断」面板——把近期答题数据（错题 + 学习档案 + 日志）发给 DeepSeek 分析，返回模式诊断 + 改进建议 + 针对性练习题（最多 6 张），诊断结果和生成的题通过 Gist 同步到手机。手机端不需要代理即可查看诊断结果。
+2. **继续扩题**（完成）：题库从 119 张扩到 **157 张**（日语 +20 张覆盖可能形/受身形/使役形/てある・ておく/拟声拟态词/〜そうだ/〜ようと思っている/新课文；英语 +10 张覆盖 SHM/data drift/transfer learning/prestressed concrete/shear/academic phrases；哲学 +8 张覆盖 TLP 1-2.063 事实-事态-对象链/命题导读/语言界限/沉默命题）。
 
 **中优先（功能 / 体验）**
 
@@ -308,8 +314,38 @@ key 只从环境变量读，只监听 127.0.0.1，前端通过它间接调用。
 - ~~解析来源可选 / 生词反向卡 / 移动端动效 / `shuffledOrder` 测试~~ → 已完成（演进记录 13）。
 - ~~下班模式 / 选择题乱序 / 组句不泄露答案 / 听→答案 / 删除不好的题~~ → 已完成（演进记录 14）。
 
+### 17. DeepSeek API 直连 + ChatGPT 剪贴板解析（2026-07-01）
+
+给手机端加了两条不依赖电脑代理的解析/出题/诊断通道：
+
+**DeepSeek API 直连（B 方案）：**
+- 前端直接 `fetch("https://api.deepseek.com/chat/completions")`，不经过代理。
+- 新增 `deepseekKeyAvailable()` / `callDeepSeekDirect()` / `callDeepSeekAnalyze()` / `callDeepSeekGenerate()` / `callDeepSeekDiagnose()` 等工具函数。
+- 解析/出题/诊断都优先走 DeepSeek 直连（如果 key 已设置），回退到本地代理。
+- `renderAnalysisBlock` 标注 provider（deepseek-direct / chatgpt / deepseek / 本地模型）。
+- 设置面板新增 DeepSeek API key 输入框（密码类型），key 只存 `localStorage`。
+- `persistedState()` 主动剥离 `deepseekKey`（和 `gitSync.token` 一样），不进备份/Gist。
+
+**ChatGPT 剪贴板解析（A 方案）：**
+- 日语卡片新增「C解析」按钮 → `handleChatGptAnalyze()`：自动构建解析提示词 + 复制到剪贴板 + 跳转 `https://chatgpt.com/`。
+- 弹出一个粘贴区（`renderChatGptPasteBlock`）→ 用户把 ChatGPT 返回的结果贴进去 → `handleChatGptPaste()` 保存到 `state.analyses`。
+- provider 标注为 `"chatgpt"`。
+- 零 API key 依赖，手机/电脑都能用。
+
+**改动的文件：** `app.js`（+~200 行）、`styles.css`（+16 行）。
+
+### 18. 删口语题 + 生词本/解析可见性（2026-07-01）
+
+针对手机端使用反馈的小修：
+
+- **删除开放式口语题**：移除 3 道「口语 45/30 秒：Describe…」自评题（en-ielts-003 / 006 / 009），体验不好。
+- **生词本移到英语主屏**：英语生词本从「今日」视图改到「练习」视图（`data-view="practice"`），
+  切到英语就能直接看到，解决"生词本似乎没有体现（找不到）"。
+- **解析按钮更直观**：日语卡两个解析按钮改名——「解析」（DeepSeek/本地直连）+「问GPT」（ChatGPT 剪贴板）；
+  解析失败提示改为引导"手机上到 设置→数据同步 填 DeepSeek Key 即可直连"，让手机端解析的用法更清楚。
+
 ## 当前状态
 
-项目已发布上线并可在 iPhone 上通过 GitHub Pages + 私有 Gist 同步使用。已具备：题库 119 张、AI 出题（本地模型 / DeepSeek 切换）、日语句子本地解析（缓存同步）、学习速度监测并据此调整智能推荐、英语生词本（双向卡）、上班/下班通勤模式、底部标签栏的手机 App 形态；组句泄露答案、选择题总选 A、重开重复题、组句词块顺序等问题均已修复。代码层面稳定，`test.js` 9/9 与浏览器脚本验证均通过。
+项目已发布上线并可在 iPhone 上通过 GitHub Pages + 私有 Gist 同步使用。已具备：题库 154 张（删了 3 道口语题）、AI 出题（本地模型 / DeepSeek 直连 / 代理切换）、**DeepSeek 学习诊断**（直连 + 代理双通道）、**ChatGPT 剪贴板解析**（手机端不用 API key）、日语句子 DeepSeek/代理/ChatGPT 三通道解析、日语错因两层归因（题组 + 细粒度标签）、学习速度监测并据此调整智能推荐、英语生词本（双向卡）、上班/下班通勤模式、底部标签栏的手机 App 形态；组句泄露答案、选择题总选 A、重开重复题、组句词块顺序等问题均已修复。代码层面稳定，`test.js` 9/9 与浏览器脚本验证均通过。
 
-核心功能已基本完整。剩余都是增强 / 打磨 / 内容，详见「未完成清单」：最值得做的是**日语错因分析**（标签归因版）和**继续扩题**。
+核心功能已完整。剩余增强/打磨/内容详见「未完成清单」。

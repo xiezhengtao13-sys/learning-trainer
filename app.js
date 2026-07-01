@@ -1,4 +1,4 @@
-const STORAGE_KEY = "triad-learning-trainer-v1";
+﻿const STORAGE_KEY = "triad-learning-trainer-v1";
 const DAY = 24 * 60 * 60 * 1000;
 
 const commuteSegments = [
@@ -144,7 +144,8 @@ const cards = [
     options: ["工作", "休息", "借入", "等待"],
     answer: "工作",
     speak: "はたらきます",
-    explanation: "はたらきます 是「工作」。常见句型：会社で はたらきます。"
+    explanation: "はたらきます 是「工作」。常见句型：会社で はたらきます。",
+    tags: ["vocab", "verb", "kanji-reading"]
   },
   {
     id: "jp-vocab-002",
@@ -155,7 +156,8 @@ const cards = [
     options: ["借入 / 借出", "进入 / 出去", "学习 / 教授", "打开 / 关闭"],
     answer: "借入 / 借出",
     speak: "かります。かします。",
-    explanation: "借ります 是从别人那里借来；貸します 是把东西借给别人。"
+    explanation: "借ります 是从别人那里借来；貸します 是把东西借给别人。",
+    tags: ["vocab", "verb", "pair-word"]
   },
   {
     id: "jp-vocab-003",
@@ -166,7 +168,8 @@ const cards = [
     accepted: ["つかいます", "使います"],
     answer: "使います",
     speak: "つかいます",
-    explanation: "使います 表示使用工具、设备、语言等。例：パソコンを使います。"
+    explanation: "使います 表示使用工具、设备、语言等。例：パソコンを使います。",
+    tags: ["vocab", "verb", "kanji-reading"]
   },
   {
     id: "jp-vocab-004",
@@ -177,7 +180,8 @@ const cards = [
     options: ["に", "を", "で", "と"],
     answer: "に",
     speak: "へやに はいります",
-    explanation: "进入的目标常用 に：部屋に入ります。离开某处常用 を：部屋を出ます。"
+    explanation: "进入的目标常用 に：部屋に入ります。离开某处常用 を：部屋を出ます。",
+    tags: ["vocab", "verb", "particle", "kanji-reading"]
   },
   {
     id: "jp-grammar-001",
@@ -193,7 +197,8 @@ const cards = [
     ],
     answer: "ここに名前を書いてください。",
     speak: "ここに名前を書いてください。",
-    explanation: "请求别人做某事：动词て形 + ください。写在某个位置常用 に。"
+    explanation: "请求别人做某事：动词て形 + ください。写在某个位置常用 に。",
+    tags: ["grammar", "te-form", "sentence-pattern", "request"]
   },
   {
     id: "jp-grammar-002",
@@ -209,7 +214,8 @@ const cards = [
     ],
     answer: "カードを使ってもいいですか。",
     speak: "カードを使ってもいいですか。",
-    explanation: "许可表达：动词て形 + もいいですか。禁止是 てはいけません。"
+    explanation: "许可表达：动词て形 + もいいですか。禁止是 てはいけません。",
+    tags: ["grammar", "te-form", "sentence-pattern", "permission"]
   },
   {
     id: "jp-grammar-003",
@@ -225,7 +231,8 @@ const cards = [
     ],
     answer: "今、日本語を勉強しています。",
     speak: "いま、日本語を勉強しています。",
-    explanation: "正在进行：动词て形 + います。"
+    explanation: "正在进行：动词て形 + います。",
+    tags: ["grammar", "te-form", "sentence-pattern", "ongoing"]
   },
   {
     id: "jp-grammar-004",
@@ -236,7 +243,8 @@ const cards = [
     accepted: ["飲んで", "のんで"],
     answer: "飲んで",
     speak: "のんで",
-    explanation: "み/び/に 结尾的一类动词，て形常变为 んで：飲みます -> 飲んで。"
+    explanation: "み/び/に 结尾的一类动词，て形常变为 んで：飲みます -> 飲んで。",
+    tags: ["grammar", "conjugation", "te-form"]
   },
   {
     id: "jp-sentence-001",
@@ -247,7 +255,8 @@ const cards = [
     tokens: ["ここで", "写真を", "撮らないで", "ください"],
     answer: ["ここで", "写真を", "撮らないで", "ください"],
     speak: "ここで写真を撮らないでください。",
-    explanation: "礼貌地请求不要做某事：ない形 + でください。"
+    explanation: "礼貌地请求不要做某事：ない形 + でください。",
+    tags: ["sentence", "word-order", "nai-form", "request"]
   },
   {
     id: "jp-sentence-002",
@@ -258,7 +267,8 @@ const cards = [
     tokens: ["あした", "先生と", "図書館へ", "行きます"],
     answer: ["あした", "先生と", "図書館へ", "行きます"],
     speak: "あした先生と図書館へ行きます。",
-    explanation: "と 表示一起行动的人；へ 表示移动方向。"
+    explanation: "と 表示一起行动的人；へ 表示移动方向。",
+    tags: ["sentence", "particle", "word-order", "とへ"]
   },
   {
     id: "jp-sentence-003",
@@ -269,7 +279,8 @@ const cards = [
     tokens: ["ここに", "座っても", "いいですか"],
     answer: ["ここに", "座っても", "いいですか"],
     speak: "ここに座ってもいいですか。",
-    explanation: "座る 的て形是 座って；许可询问用 てもいいですか。"
+    explanation: "座る 的て形是 座って；许可询问用 てもいいですか。",
+    tags: ["sentence", "te-form", "word-order", "permission"]
   },
   {
     id: "en-civil-001",
@@ -411,22 +422,6 @@ const cards = [
     explanation: "写作里可以用 It is worth noting that... 来降低口语感。"
   },
   {
-    id: "en-ielts-003",
-    track: "english",
-    module: "en-ielts",
-    type: "self",
-    prompt: "口语 45 秒：Describe a technology that helps engineers work more efficiently.",
-    subprompt: "说完后按自己的表现评分。",
-    checklist: [
-      "是否说清楚这是什么技术",
-      "是否给出一个工程场景",
-      "是否用了 efficiency, accuracy, reduce errors 中至少一个表达"
-    ],
-    sample: "BIM helps engineers coordinate structural, architectural, and mechanical information in one model. It improves efficiency because conflicts can be found before construction starts.",
-    speak: "Describe a technology that helps engineers work more efficiently.",
-    explanation: "这个题目把技术、工程场景、优点三块说完整就够稳定。"
-  },
-  {
     id: "tlp-concept-001",
     track: "tractatus",
     module: "tlp-concept",
@@ -561,7 +556,7 @@ const cards = [
     answer: "读日语书并记新词",
     speak: "きのう、田中さんは大学の図書館へ行きました。図書館で日本語の本を読んで、新しい言葉をノートに書きました。",
     explanation: "课文第二句给出原因：日本語の本を読んで、新しい言葉をノートに書きました。",
-    tags: ["reading", "te-form", "vocab"]
+    tags: ["reading", "te-form", "vocab", "kanji-reading"]
   },
   {
     id: "jp-reading-002",
@@ -583,7 +578,7 @@ const cards = [
     answer: "読んで",
     speak: "図書館で日本語の本を読んで、新しい言葉をノートに書きました。",
     explanation: "読む -> 読んで。这里不是单独背变化，而是放进课文动作链里记。",
-    tags: ["reading", "te-form", "verb"]
+    tags: ["reading", "te-form", "verb", "kanji-reading"]
   },
   {
     id: "jp-reading-003",
@@ -601,7 +596,7 @@ const cards = [
     answer: ["パソコンを使って", "レポートを書いてから", "先生に", "メールを送りました"],
     speak: "パソコンを使って、レポートを書いてから、先生にメールを送りました。",
     explanation: "这个长句把 て形、から、に 的用法串在一起，适合整句记忆。",
-    tags: ["reading", "long-sentence", "te-form"]
+    tags: ["reading", "long-sentence", "te-form", "kanji-reading"]
   },
   {
     id: "en-reading-001",
@@ -714,7 +709,8 @@ const cards = [
     options: ["忙碌", "安静", "便宜", "有名"],
     answer: "忙碌",
     speak: "きょうは いそがしいです。",
-    explanation: "いそがしい 是「忙」。例：今日は仕事が忙しいです。"
+    explanation: "いそがしい 是「忙」。例：今日は仕事が忙しいです。",
+    tags: ["vocab", "adj", "kanji-reading"]
   },
   {
     id: "jp-vocab-006",
@@ -725,7 +721,8 @@ const cards = [
     options: ["方便", "不便", "危险", "安静"],
     answer: "方便",
     speak: "このアプリは べんりです。",
-    explanation: "便利（べんり）是「方便」。反义是 不便（ふべん）。"
+    explanation: "便利（べんり）是「方便」。反义是 不便（ふべん）。",
+    tags: ["vocab", "adj-na", "kanji-reading"]
   },
   {
     id: "jp-vocab-007",
@@ -736,7 +733,8 @@ const cards = [
     accepted: ["やすい", "安い"],
     answer: "安い",
     speak: "この みせは やすいです。",
-    explanation: "安い（やすい）是「便宜」；注意和「安全」的汉字虽同，但读法不同。"
+    explanation: "安い（やすい）是「便宜」；注意和「安全」的汉字虽同，但读法不同。",
+    tags: ["vocab", "adj", "kanji-reading"]
   },
   {
     id: "jp-vocab-008",
@@ -747,7 +745,8 @@ const cards = [
     options: ["后天", "昨天", "前天", "今早"],
     answer: "后天",
     speak: "あさって テストが あります。",
-    explanation: "时间词：おととい(前天)・きのう(昨天)・きょう(今天)・あした(明天)・あさって(后天)。"
+    explanation: "时间词：おととい(前天)・きのう(昨天)・きょう(今天)・あした(明天)・あさって(后天)。",
+    tags: ["vocab", "time-word", "kanji-reading"]
   },
   {
     id: "jp-grammar-005",
@@ -763,7 +762,8 @@ const cards = [
     ],
     answer: "水が飲みたいです。",
     speak: "水が飲みたいです。",
-    explanation: "想做某事：动词ます形去ます + たいです。对象常用 が（用 を 也可以）。"
+    explanation: "想做某事：动词ます形去ます + たいです。对象常用 が（用 を 也可以）。",
+    tags: ["grammar", "sentence-pattern", "desire"]
   },
   {
     id: "jp-grammar-006",
@@ -779,7 +779,8 @@ const cards = [
     ],
     answer: "東京は大阪より大きいです。",
     speak: "東京は大阪より大きいです。",
-    explanation: "比较句：AはBより〜です，表示 A 比 B 更…。最后一项意思反了。"
+    explanation: "比较句：AはBより〜です，表示 A 比 B 更…。最后一项意思反了。",
+    tags: ["grammar", "particle", "sentence-pattern", "comparison"]
   },
   {
     id: "jp-grammar-007",
@@ -790,7 +791,8 @@ const cards = [
     accepted: ["行かない", "いかない"],
     answer: "行かない",
     speak: "いかない",
-    explanation: "一类动词 ない形：き→か + ない。行きます -> 行かない。"
+    explanation: "一类动词 ない形：き→か + ない。行きます -> 行かない。",
+    tags: ["grammar", "conjugation", "nai-form"]
   },
   {
     id: "jp-grammar-008",
@@ -806,7 +808,8 @@ const cards = [
     ],
     answer: "日本語が できます。",
     speak: "日本語が できます。",
-    explanation: "できます（会／能）前面的对象用 が：日本語が できます。"
+    explanation: "できます（会／能）前面的对象用 が：日本語が できます。",
+    tags: ["grammar", "particle", "sentence-pattern", "ability"]
   },
   {
     id: "jp-grammar-009",
@@ -822,7 +825,8 @@ const cards = [
     ],
     answer: "東京に住んでいます。",
     speak: "東京に住んでいます。",
-    explanation: "住む 用「〜ています」表示持续状态；居住地点用 に。"
+    explanation: "住む 用「〜ています」表示持续状态；居住地点用 に。",
+    tags: ["grammar", "te-form", "particle", "sentence-pattern", "state"]
   },
   {
     id: "jp-sentence-004",
@@ -833,7 +837,8 @@ const cards = [
     tokens: ["しゅうまつ", "友達と", "映画を", "見ました"],
     answer: ["しゅうまつ", "友達と", "映画を", "見ました"],
     speak: "しゅうまつ、友達と映画を見ました。",
-    explanation: "と 表示一起做事的人；映画を見ます 是固定搭配。"
+    explanation: "と 表示一起做事的人；映画を見ます 是固定搭配。",
+    tags: ["sentence", "particle", "word-order", "とを"]
   },
   {
     id: "jp-sentence-005",
@@ -844,7 +849,8 @@ const cards = [
     tokens: ["毎朝", "7時に", "起きます"],
     answer: ["毎朝", "7時に", "起きます"],
     speak: "毎朝7時に起きます。",
-    explanation: "具体时间点用 に：7時に。毎朝 是频率词，不加 に。"
+    explanation: "具体时间点用 に：7時に。毎朝 是频率词，不加 に。",
+    tags: ["sentence", "particle", "word-order", "time-ni"]
   },
   {
     id: "jp-sentence-006",
@@ -855,7 +861,8 @@ const cards = [
     tokens: ["このレストランは", "安くて", "おいしいです"],
     answer: ["このレストランは", "安くて", "おいしいです"],
     speak: "このレストランは安くておいしいです。",
-    explanation: "い形容词连接用「〜くて」：安い -> 安くて。"
+    explanation: "い形容词连接用「〜くて」：安い -> 安くて。",
+    tags: ["sentence", "conjugation", "word-order", "adj-te"]
   },
   {
     id: "jp-reading-004",
@@ -877,7 +884,7 @@ const cards = [
     answer: "买东西",
     speak: "デパートで買い物をして、おいしいラーメンを食べました。",
     explanation: "第二句：デパートで買い物をして…说明在百货店买了东西。",
-    tags: ["reading", "te-form", "vocab"]
+    tags: ["reading", "te-form", "vocab", "kanji-reading"]
   },
   {
     id: "jp-reading-005",
@@ -899,7 +906,7 @@ const cards = [
     answer: "見て",
     speak: "それから、映画を見て、夜うちへ帰りました。",
     explanation: "見る -> 見て。放进课文动作链里记，比单背更稳。",
-    tags: ["reading", "te-form", "verb"]
+    tags: ["reading", "te-form", "verb", "kanji-reading"]
   },
   {
     id: "jp-reading-006",
@@ -917,7 +924,7 @@ const cards = [
     answer: ["週末は", "図書館で", "勉強してから", "友達と", "ごはんを食べました"],
     speak: "週末は図書館で勉強してから、友達とごはんを食べました。",
     explanation: "〜てから 表示前一个动作完成后再做下一件事。",
-    tags: ["reading", "long-sentence", "te-form"]
+    tags: ["reading", "long-sentence", "te-form", "kanji-reading"]
   },
   {
     id: "en-civil-005",
@@ -1058,22 +1065,6 @@ const cards = [
     answer: "To sum up, ...",
     speak: "To sum up, the benefits outweigh the drawbacks.",
     explanation: "结尾段可用 To sum up / To conclude / In summary / Overall。"
-  },
-  {
-    id: "en-ielts-006",
-    track: "english",
-    module: "en-ielts",
-    type: "self",
-    prompt: "口语 45 秒：Describe a place where you often study and why you like it.",
-    subprompt: "说完后按自己的表现评分。",
-    checklist: [
-      "是否说清是什么地方",
-      "是否给出两个具体原因",
-      "是否用了 quiet, convenient, focus 中至少一个表达"
-    ],
-    sample: "I often study in the university library because it is quiet and well-equipped. The reading area helps me focus, and I can borrow reference books whenever I need them.",
-    speak: "Describe a place where you often study and why you like it.",
-    explanation: "地点 + 两个原因 + 一个具体细节，结构稳，时间也够。"
   },
   {
     id: "en-reading-004",
@@ -1256,7 +1247,8 @@ const cards = [
     accepted: ["おしえます", "教えます"],
     answer: "教えます",
     speak: "日本語を教えます。",
-    explanation: "教えます（おしえます）表示教授。例：先生は日本語を教えます。"
+    explanation: "教えます（おしえます）表示教授。例：先生は日本語を教えます。",
+    tags: ["vocab", "verb", "kanji-reading"]
   },
   {
     id: "jp-vocab-010",
@@ -1267,7 +1259,8 @@ const cards = [
     options: ["空闲", "忙碌", "便宜", "危险"],
     answer: "空闲",
     speak: "きょうは ひまです。",
-    explanation: "暇（ひま）是「空闲」，反义是 忙しい（いそがしい）。"
+    explanation: "暇（ひま）是「空闲」，反义是 忙しい（いそがしい）。",
+    tags: ["vocab", "adj-na", "kanji-reading"]
   },
   {
     id: "jp-vocab-011",
@@ -1278,7 +1271,8 @@ const cards = [
     accepted: ["ふべん", "不便"],
     answer: "不便",
     speak: "ここは ちょっと ふべんです。",
-    explanation: "便利（べんり）⇔ 不便（ふべん）。"
+    explanation: "便利（べんり）⇔ 不便（ふべん）。",
+    tags: ["vocab", "adj-na", "antonym", "kanji-reading"]
   },
   {
     id: "jp-grammar-010",
@@ -1294,7 +1288,8 @@ const cards = [
     ],
     answer: "公園に犬がいます。",
     speak: "公園に犬がいます。",
-    explanation: "有生命的（人、动物）用 います；无生命的用 あります。存在地点用 に。"
+    explanation: "有生命的（人、动物）用 います；无生命的用 あります。存在地点用 に。",
+    tags: ["grammar", "particle", "existence", "iru-aru"]
   },
   {
     id: "jp-grammar-011",
@@ -1305,7 +1300,8 @@ const cards = [
     accepted: ["行きませんでした", "いきませんでした"],
     answer: "行きませんでした",
     speak: "きのうは行きませんでした。",
-    explanation: "ます的过去否定：ます -> ませんでした。行きます -> 行きませんでした。"
+    explanation: "ます的过去否定：ます -> ませんでした。行きます -> 行きませんでした。",
+    tags: ["grammar", "conjugation", "past-negative"]
   },
   {
     id: "jp-grammar-012",
@@ -1321,7 +1317,8 @@ const cards = [
     ],
     answer: "旅行は楽しかったです。",
     speak: "旅行は楽しかったです。",
-    explanation: "い形容词过去式：楽しい -> 楽しかったです（不是「楽しいでした」）。"
+    explanation: "い形容词过去式：楽しい -> 楽しかったです（不是「楽しいでした」）。",
+    tags: ["grammar", "conjugation", "adj-i-past"]
   },
   {
     id: "jp-grammar-013",
@@ -1337,7 +1334,8 @@ const cards = [
     ],
     answer: "ここは静かです。",
     speak: "ここは静かです。",
-    explanation: "静か 是な形容词，直接 + です：静かです（没有 い）。"
+    explanation: "静か 是な形容词，直接 + です：静かです（没有 い）。",
+    tags: ["grammar", "adj-na", "sentence-pattern"]
   },
   {
     id: "jp-grammar-014",
@@ -1353,7 +1351,8 @@ const cards = [
     ],
     answer: "日本料理が好きです。",
     speak: "日本料理が好きです。",
-    explanation: "好き・嫌い・上手・下手 前面的对象用 が。"
+    explanation: "好き・嫌い・上手・下手 前面的对象用 が。",
+    tags: ["grammar", "particle", "sentence-pattern", "suki-ga"]
   },
   {
     id: "jp-sentence-007",
@@ -1364,7 +1363,8 @@ const cards = [
     tokens: ["新しい", "パソコンが", "ほしいです"],
     answer: ["新しい", "パソコンが", "ほしいです"],
     speak: "新しいパソコンがほしいです。",
-    explanation: "想要某物：〜が ほしいです。形容词 新しい 直接修饰名词。"
+    explanation: "想要某物：〜が ほしいです。形容词 新しい 直接修饰名词。",
+    tags: ["sentence", "particle", "word-order", "hoshii-ga"]
   },
   {
     id: "jp-sentence-008",
@@ -1375,7 +1375,8 @@ const cards = [
     tokens: ["いっしょに", "映画を", "見ましょう"],
     answer: ["いっしょに", "映画を", "見ましょう"],
     speak: "いっしょに映画を見ましょう。",
-    explanation: "提议一起做某事：动词ます形去ます + ましょう。"
+    explanation: "提议一起做某事：动词ます形去ます + ましょう。",
+    tags: ["sentence", "word-order", "sentence-pattern", "mashou"]
   },
   {
     id: "jp-sentence-009",
@@ -1386,7 +1387,8 @@ const cards = [
     tokens: ["しゅうまつ", "家族と", "旅行に", "行きます"],
     answer: ["しゅうまつ", "家族と", "旅行に", "行きます"],
     speak: "しゅうまつ、家族と旅行に行きます。",
-    explanation: "去做某活动：〜に行きます。旅行に行きます = 去旅行。"
+    explanation: "去做某活动：〜に行きます。旅行に行きます = 去旅行。",
+    tags: ["sentence", "particle", "word-order", "ni-iku"]
   },
   {
     id: "jp-reading-007",
@@ -1408,7 +1410,7 @@ const cards = [
     answer: "先走到车站，再坐电车去",
     speak: "朝ごはんを食べてから、駅まで歩いて、電車で会社へ行きます。",
     explanation: "第二句：駅まで歩いて、電車で会社へ行きます——先走到车站再坐电车。",
-    tags: ["reading", "te-form", "transport"]
+    tags: ["reading", "te-form", "transport", "kanji-reading"]
   },
   {
     id: "jp-reading-008",
@@ -1430,7 +1432,7 @@ const cards = [
     answer: "食べて",
     speak: "朝ごはんを食べてから、駅まで歩きます。",
     explanation: "食べる -> 食べて；〜てから 表示前一动作完成后再做下一件。",
-    tags: ["reading", "te-form", "verb"]
+    tags: ["reading", "te-form", "verb", "kanji-reading"]
   },
   {
     id: "jp-reading-009",
@@ -1448,7 +1450,7 @@ const cards = [
     answer: ["仕事は", "9時に始まって", "6時に終わります"],
     speak: "仕事は9時に始まって、6時に終わります。",
     explanation: "始まる -> 始まって；用て形把「开始」和「结束」连成一句。",
-    tags: ["reading", "long-sentence", "te-form"]
+    tags: ["reading", "long-sentence", "te-form", "kanji-reading"]
   },
   {
     id: "en-civil-009",
@@ -1578,22 +1580,6 @@ const cards = [
     answer: "a significant increase",
     speak: "There was a significant increase in demand.",
     explanation: "significant / substantial / considerable / sharp + increase 都比 big 更学术。"
-  },
-  {
-    id: "en-ielts-009",
-    track: "english",
-    module: "en-ielts",
-    type: "self",
-    prompt: "Task 1 口语 30 秒：用一句话概括一张折线图的总体趋势（例如气温逐年上升）。",
-    subprompt: "说完后按清晰度评分。",
-    checklist: [
-      "是否先给 overview（总体趋势）",
-      "是否用了 rise / increase / upward trend 等词",
-      "是否提到时间范围"
-    ],
-    sample: "Overall, the temperature showed an upward trend, rising steadily between 2000 and 2020.",
-    speak: "Overall, the temperature showed an upward trend, rising steadily between 2000 and 2020.",
-    explanation: "Task 1 先说总体趋势（overview），再用一个趋势动词和时间范围支撑。"
   },
   {
     id: "en-reading-007",
@@ -1916,6 +1902,597 @@ const cards = [
     ],
     answer: "理解之后，要把这些命题本身像梯子一样扔掉",
     explanation: "读者借这些命题爬上去看清问题后，应认识到它们本身也要被超越——「爬上去后扔掉梯子」。"
+  },
+  // === 日语扩充：Minna 16+ 语法/词汇（20张） ===
+  {
+    id: "jp-grammar-015",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「窗户开着」最自然的是？",
+    options: [
+      "窓が開けてあります。",
+      "窓が開けています。",
+      "窓が開けてください。",
+      "窓が開けました。"
+    ],
+    answer: "窓が開けてあります。",
+    speak: "窓が開けてあります。",
+    explanation: "〜てある 表示某动作造成的结果状态仍在持续（人为动作后留下的状态）。開ける（他动词）→ 開けてある。",
+    tags: ["grammar", "te-form", "sentence-pattern", "te-aru"]
+  },
+  {
+    id: "jp-grammar-016",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「我提前把作业做完了」最自然的是？",
+    options: [
+      "宿題をやっておきました。",
+      "宿題をやっています。",
+      "宿題をやってあります。",
+      "宿題をやりました。"
+    ],
+    answer: "宿題をやっておきました。",
+    speak: "宿題をやっておきました。",
+    explanation: "〜ておく 表示为了某个目的而事先做好某事。やっておく → やっておきました。",
+    tags: ["grammar", "te-form", "sentence-pattern", "te-oku"]
+  },
+  {
+    id: "jp-grammar-017",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「我能读日语报纸了」最自然的是？",
+    options: [
+      "日本語の新聞が読めるようになりました。",
+      "日本語の新聞を読みます。",
+      "日本語の新聞が読みたいです。",
+      "日本語の新聞を読んでいます。"
+    ],
+    answer: "日本語の新聞が読めるようになりました。",
+    speak: "日本語の新聞が読めるようになりました。",
+    explanation: "可能形：読む → 読める。〜ようになる 表示状态的变化（从不会到会）。",
+    tags: ["grammar", "conjugation", "potential", "sentence-pattern"]
+  },
+  {
+    id: "jp-grammar-018",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "input",
+    prompt: "把「食べます」变成可能形（辞书形即可）。",
+    accepted: ["食べられる", "たべられる"],
+    answer: "食べられる",
+    speak: "たべられる",
+    explanation: "二类动词可能形：去る + られる。食べる → 食べられる。口语中也常说 食べれる（ら抜き）。",
+    tags: ["grammar", "conjugation", "potential"]
+  },
+  {
+    id: "jp-grammar-019",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「我被老师表扬了」最自然的是？",
+    options: [
+      "先生にほめられました。",
+      "先生をほめました。",
+      "先生がほめました。",
+      "先生はほめました。"
+    ],
+    answer: "先生にほめられました。",
+    speak: "先生にほめられました。",
+    explanation: "受身形（被动）：一类动词ない形 + れる。ほめる → ほめられる。动作主体用 に。",
+    tags: ["grammar", "conjugation", "passive"]
+  },
+  {
+    id: "jp-grammar-020",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「妈妈让孩子打扫房间」最自然的是？",
+    options: [
+      "お母さんは子供に部屋を掃除させました。",
+      "お母さんは子供が部屋を掃除しました。",
+      "お母さんは子供に部屋を掃除されました。",
+      "お母さんは子供を部屋に掃除しました。"
+    ],
+    answer: "お母さんは子供に部屋を掃除させました。",
+    speak: "お母さんは子供に部屋を掃除させました。",
+    explanation: "使役形：一类动词ない形 + せる。掃除する → 掃除させる。让某人做某事用 に。",
+    tags: ["grammar", "conjugation", "causative"]
+  },
+  {
+    id: "jp-vocab-012",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "choice",
+    prompt: "「しっかり」最贴近哪一个意思？",
+    options: ["踏实、しっかり地", "慢慢地", "安静地", "开心地"],
+    answer: "踏实、しっかり地",
+    speak: "しっかり勉強してください。",
+    explanation: "しっかり 是拟态词，表示「扎实地、可靠地」。例：しっかり覚えてください（请牢牢记住）。",
+    tags: ["vocab", "adverb", "mimetic", "kanji-reading"]
+  },
+  {
+    id: "jp-vocab-013",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "choice",
+    prompt: "「はっきり」最贴近哪一个意思？",
+    options: ["清楚、明确", "模糊", "慢慢地", "安静地"],
+    answer: "清楚、明确",
+    speak: "はっきり言ってください。",
+    explanation: "はっきり 是拟态词，表示「清楚地、明确地」。例：はっきり見えます（看得很清楚）。",
+    tags: ["vocab", "adverb", "mimetic", "kanji-reading"]
+  },
+  {
+    id: "jp-vocab-014",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "choice",
+    prompt: "「ゆっくり」最贴近哪一个意思？",
+    options: ["慢慢地、从容地", "快速地", "清楚地", "安静地"],
+    answer: "慢慢地、从容地",
+    speak: "ゆっくり話してください。",
+    explanation: "ゆっくり 表示「慢慢地、从容地」。例：ゆっくり休んでください（请好好休息）。",
+    tags: ["vocab", "adverb", "mimetic"]
+  },
+  {
+    id: "jp-vocab-015",
+    track: "japanese",
+    module: "jp-vocab",
+    type: "input",
+    prompt: "写出「忘记」的日语动词辞书形（假名即可）。",
+    accepted: ["わすれる", "忘れる"],
+    answer: "忘れる",
+    speak: "かさを忘れました。",
+    explanation: "忘れる（わすれる）是二类动词。例：傘を忘れました（忘了伞）。注意和「覚える（おぼえる，记住）」成对。",
+    tags: ["vocab", "verb", "kanji-reading"]
+  },
+  {
+    id: "jp-sentence-010",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：因为昨天病了，所以没去公司。",
+    tokens: ["きのう", "病気だったので", "会社へ", "行きませんでした"],
+    answer: ["きのう", "病気だったので", "会社へ", "行きませんでした"],
+    speak: "きのう病気だったので、会社へ行きませんでした。",
+    explanation: "〜ので 表示原因（比 から 更礼貌/客观）。な形容词/名词过去式 + なので/だったので。",
+    tags: ["sentence", "word-order", "sentence-pattern", "node"]
+  },
+  {
+    id: "jp-sentence-011",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：如果你去日本的话，请告诉我。",
+    tokens: ["日本へ", "行ったら", "教えてください"],
+    answer: ["日本へ", "行ったら", "教えてください"],
+    speak: "日本へ行ったら、教えてください。",
+    explanation: "〜たら 表示假定条件（如果…的话）。行く → 行ったら（た形 + ら）。",
+    tags: ["sentence", "word-order", "conjugation", "tara"]
+  },
+  {
+    id: "jp-sentence-012",
+    track: "japanese",
+    module: "jp-sentence",
+    type: "arrange",
+    prompt: "组句：即使贵，我也想买这个。",
+    tokens: ["高くても", "これを", "買いたいです"],
+    answer: ["高くても", "これを", "買いたいです"],
+    speak: "高くても、これを買いたいです。",
+    explanation: "〜ても 表示让步（即使…也）。い形容词 → 〜くても：高い → 高くても。",
+    tags: ["sentence", "word-order", "conjugation", "temo"]
+  },
+  {
+    id: "jp-grammar-021",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「好像要下雨」最自然的是？",
+    options: [
+      "雨が降りそうです。",
+      "雨が降るそうです。",
+      "雨が降っています。",
+      "雨が降るようです。"
+    ],
+    answer: "雨が降りそうです。",
+    speak: "雨が降りそうです。",
+    explanation: "〜そうだ 表示根据眼前迹象的推测（看起来…）。动词ます形去ます + そうだ：降ります → 降りそうだ。注意和传闻的 〜そうだ（普通形+そうだ）区分。",
+    tags: ["grammar", "sentence-pattern", "sou-da", "inference"]
+  },
+  {
+    id: "jp-grammar-022",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「听说田中要结婚」最自然的是？",
+    options: [
+      "田中さんは結婚するそうです。",
+      "田中さんは結婚しそうです。",
+      "田中さんは結婚しています。",
+      "田中さんは結婚するようです。"
+    ],
+    answer: "田中さんは結婚するそうです。",
+    speak: "田中さんは結婚するそうです。",
+    explanation: "传闻的 〜そうだ：动词普通形 + そうだ。结婚する + そうだ = 結婚するそうです（听说…）。和样态的 降りそうだ 不同。",
+    tags: ["grammar", "sentence-pattern", "sou-da", "hearsay"]
+  },
+  {
+    id: "jp-grammar-023",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "input",
+    prompt: "把「書きます」变成意向形（〜ましょう的普通体）。",
+    accepted: ["書こう", "かこう"],
+    answer: "書こう",
+    speak: "いっしょに書こう。",
+    explanation: "意向形：一类动词 き→こ + う。書きます → 書こう。普通体 〜う/よう = 敬体 〜ましょう。",
+    tags: ["grammar", "conjugation", "volitional"]
+  },
+  {
+    id: "jp-grammar-024",
+    track: "japanese",
+    module: "jp-grammar",
+    type: "choice",
+    prompt: "「我正在考虑去日本留学」最自然的是？",
+    options: [
+      "日本に留学しようと思っています。",
+      "日本に留学すると思います。",
+      "日本に留学したいです。",
+      "日本に留学してください。"
+    ],
+    answer: "日本に留学しようと思っています。",
+    speak: "日本に留学しようと思っています。",
+    explanation: "意向形 + と思っています 表示「正在考虑要做…」（持续一段时间的打算）。留学する → 留学しよう。",
+    tags: ["grammar", "conjugation", "volitional", "sentence-pattern"]
+  },
+  {
+    id: "jp-reading-010",
+    track: "japanese",
+    module: "jp-reading",
+    type: "choice",
+    prompt: "根据课文，这个人为什么去医院？",
+    context: {
+      title: "小课文：体の調子",
+      body: [
+        "きのうから頭が痛くて、熱も少しありました。",
+        "今朝、熱が38度以上になったので、近くの病院へ行きました。",
+        "医者に風邪だと診断されて、薬をもらいました。"
+      ],
+      translation: "从昨天开始头疼，也有点发烧。今早烧到38度以上，所以去了附近的医院。医生诊断为感冒，开了药。",
+      notes: ["〜くて 连接原因", "〜ので 表示客观原因", "受身形「診断されて」表示被医生诊断"]
+    },
+    options: ["头痛发烧加重了", "去上班", "去上课", "去买东西"],
+    answer: "头痛发烧加重了",
+    speak: "今朝、熱が38度以上になったので、近くの病院へ行きました。",
+    explanation: "第二句说明原因：烧到38度以上，所以去了医院。",
+    tags: ["reading", "te-form", "node", "kanji-reading"]
+  },
+  {
+    id: "jp-reading-011",
+    track: "japanese",
+    module: "jp-reading",
+    type: "input",
+    prompt: "根据课文填空：医者に風邪だと___、薬をもらいました。",
+    context: {
+      title: "小课文：体の調子",
+      body: [
+        "きのうから頭が痛くて、熱も少しありました。",
+        "今朝、熱が38度以上になったので、近くの病院へ行きました。",
+        "医者に風邪だと診断されて、薬をもらいました。"
+      ],
+      translation: "从昨天开始头疼，也有点发烧。今早烧到38度以上，所以去了附近的医院。医生诊断为感冒，开了药。",
+      notes: ["診断する 的被动是 診断される", "〜て 连接两个被动/接受动作"]
+    },
+    accepted: ["診断されて", "しんだんされて"],
+    answer: "診断されて",
+    speak: "医者に風邪だと診断されて、薬をもらいました。",
+    explanation: "診断する → 診断されて（受身て形）。放进课文就比单记被动变形更自然。",
+    tags: ["reading", "passive", "te-form", "kanji-reading"]
+  },
+  {
+    id: "jp-reading-012",
+    track: "japanese",
+    module: "jp-reading",
+    type: "arrange",
+    prompt: "组句：被前辈邀请，去了周末的派对。",
+    context: {
+      title: "长句骨架",
+      body: ["先輩に誘われて、週末のパーティーに行きました。"],
+      translation: "被前辈邀请，去了周末的派对。",
+      notes: ["誘う → 誘われる（被动）→ 誘われて（被动て形）", "週末の 表示「周末的」"]
+    },
+    tokens: ["先輩に誘われて", "週末の", "パーティーに", "行きました"],
+    answer: ["先輩に誘われて", "週末の", "パーティーに", "行きました"],
+    speak: "先輩に誘われて、週末のパーティーに行きました。",
+    explanation: "被动て形 + 主动动作：被…之后做了…。这种链式结构在日语叙事中非常常见。",
+    tags: ["reading", "passive", "te-form", "long-sentence"]
+  },
+  // === 英语扩充：工程/AI 长句（10张） ===
+  {
+    id: "en-reading-012",
+    track: "english",
+    module: "en-reading",
+    type: "choice",
+    prompt: "According to the passage, what is the main benefit of SHM?",
+    context: {
+      title: "Structural Health Monitoring",
+      body: [
+        "Structural health monitoring (SHM) uses sensors embedded in bridges and buildings to track strain, vibration, and temperature over time.",
+        "By detecting anomalies before they become critical, SHM helps engineers schedule maintenance proactively rather than reactively.",
+        "This shift from scheduled to condition-based maintenance can extend the service life of infrastructure by decades."
+      ],
+      translation: "结构健康监测（SHM）利用嵌入桥梁和建筑的传感器追踪应变、振动和温度。通过提前检测异常，工程师可以主动安排维护。这种从定时维护到基于状态的维护的转变，可以将基础设施的使用寿命延长数十年。",
+      notes: ["condition-based maintenance 基于状态的维护", "extend service life 延长使用寿命", "proactively vs reactively 主动 vs 被动"]
+    },
+    options: [
+      "It enables condition-based maintenance and extends infrastructure life",
+      "It replaces all human inspection completely",
+      "It reduces the weight of bridges",
+      "It eliminates the need for structural design"
+    ],
+    answer: "It enables condition-based maintenance and extends infrastructure life",
+    speak: "SHM helps engineers schedule maintenance proactively, extending infrastructure service life by decades.",
+    explanation: "SHM shifts maintenance from scheduled to condition-based, extending service life.",
+    tags: ["reading", "civil", "long-sentence", "academic-verb"]
+  },
+  {
+    id: "en-reading-013",
+    track: "english",
+    module: "en-reading",
+    type: "input",
+    prompt: "Fill in: The shift from scheduled to ___ maintenance can extend infrastructure life.",
+    context: {
+      title: "Structural Health Monitoring",
+      body: [
+        "Structural health monitoring (SHM) uses sensors embedded in bridges and buildings to track strain, vibration, and temperature over time.",
+        "By detecting anomalies before they become critical, SHM helps engineers schedule maintenance proactively rather than reactively.",
+        "This shift from scheduled to condition-based maintenance can extend the service life of infrastructure by decades."
+      ],
+      translation: "同上",
+      notes: ["condition-based = 基于状态的", "scheduled maintenance = 定时维护"]
+    },
+    accepted: ["condition-based", "condition based"],
+    answer: "condition-based",
+    speak: "condition-based maintenance",
+    explanation: "condition-based maintenance: maintenance triggered by actual condition, not calendar.",
+    tags: ["reading", "civil", "vocab", "academic-verb"]
+  },
+  {
+    id: "en-reading-014",
+    track: "english",
+    module: "en-reading",
+    type: "choice",
+    prompt: "What does 'data drift' refer to in the ML context?",
+    context: {
+      title: "ML in Production: Data Drift",
+      body: [
+        "Data drift occurs when the statistical properties of the input data change over time relative to the training distribution.",
+        "For example, a model trained on summer traffic patterns may underperform in winter when road conditions and travel behavior differ.",
+        "Engineers monitor drift metrics and retrain models when the distribution shift exceeds a predefined threshold."
+      ],
+      translation: "数据漂移指输入数据的统计特性随时间变化，偏离训练分布。例如用夏季交通数据训练的模型在冬季可能表现不佳。工程师监控漂移指标，当分布偏移超过阈值时重新训练模型。",
+      notes: ["statistical properties 统计特性", "training distribution 训练分布", "predefined threshold 预定义阈值"]
+    },
+    options: [
+      "When input data statistics shift away from the training distribution",
+      "When the model runs slower over time",
+      "When the data storage fills up",
+      "When the training code has bugs"
+    ],
+    answer: "When input data statistics shift away from the training distribution",
+    speak: "Data drift occurs when the statistical properties of input data change relative to the training distribution.",
+    explanation: "Data drift = distribution shift between training and production data, causing model degradation.",
+    tags: ["reading", "ai", "long-sentence", "academic-verb"]
+  },
+  {
+    id: "en-ai-012",
+    track: "english",
+    module: "en-ai",
+    type: "input",
+    prompt: "Translate into academic English: 迁移学习",
+    accepted: ["transfer learning"],
+    answer: "transfer learning",
+    speak: "transfer learning",
+    explanation: "transfer learning: applying knowledge learned from one task to a related but different task. Common in vision (pre-trained on ImageNet) and NLP (pre-trained language models)."
+  },
+  {
+    id: "en-ai-013",
+    track: "english",
+    module: "en-ai",
+    type: "choice",
+    prompt: "In ML, 'overfitting' means:",
+    options: [
+      "the model memorizes training data but fails to generalize to new data",
+      "the model trains too quickly",
+      "the dataset is too small to load",
+      "the model has too few parameters"
+    ],
+    answer: "the model memorizes training data but fails to generalize to new data",
+    speak: "Overfitting occurs when a model learns the noise in the training data rather than the underlying pattern.",
+    explanation: "Overfitting → low training error but high test error. Countermeasures: regularization, dropout, early stopping, more data."
+  },
+  {
+    id: "en-ai-014",
+    track: "english",
+    module: "en-ai",
+    type: "input",
+    prompt: "Fill in: ___ is the process of converting raw data into features suitable for ML models.",
+    accepted: ["feature engineering", "feature extraction"],
+    answer: "feature engineering",
+    speak: "feature engineering",
+    explanation: "Feature engineering: selecting, transforming, and creating input variables that help ML models learn patterns effectively."
+  },
+  {
+    id: "en-civil-013",
+    track: "english",
+    module: "en-civil",
+    type: "input",
+    prompt: "Translate: 预应力混凝土",
+    accepted: ["prestressed concrete"],
+    answer: "prestressed concrete",
+    speak: "prestressed concrete",
+    explanation: "prestressed concrete: concrete with internal stresses intentionally introduced to counteract service loads. Common in bridges and long-span structures."
+  },
+  {
+    id: "en-civil-014",
+    track: "english",
+    module: "en-civil",
+    type: "choice",
+    prompt: "In structural engineering, 'shear' refers to:",
+    options: [
+      "forces that cause one part of a material to slide past another",
+      "pulling forces along the length of a member",
+      "forces that cause buckling",
+      "rotational movement at a joint"
+    ],
+    answer: "forces that cause one part of a material to slide past another",
+    speak: "Shear forces act parallel to the cross-section, causing adjacent parts to slide relative to each other.",
+    explanation: "Shear = parallel sliding force. Contrast with tension (pulling apart) and compression (pushing together)."
+  },
+  {
+    id: "en-ielts-010",
+    track: "english",
+    module: "en-ielts",
+    type: "choice",
+    prompt: "Which phrase best introduces a contrasting point in academic writing?",
+    options: [
+      "On the other hand,",
+      "In addition,",
+      "As a result,",
+      "For instance,"
+    ],
+    answer: "On the other hand,",
+    speak: "On the other hand, the environmental costs of this approach cannot be overlooked.",
+    explanation: "On the other hand = introduces contrast. In addition = adds; As a result = consequence; For instance = example."
+  },
+  {
+    id: "en-ielts-011",
+    track: "english",
+    module: "en-ielts",
+    type: "input",
+    prompt: "Complete the academic phrase: It is widely ___ that climate change poses a significant threat.",
+    accepted: ["acknowledged", "recognized", "accepted"],
+    answer: "acknowledged",
+    speak: "It is widely acknowledged that climate change poses a significant threat.",
+    explanation: "It is widely acknowledged/recognized that... = common academic hedging phrase to introduce consensus views."
+  },
+  // === 哲学扩充：命题导读与概念关系（8张） ===
+  {
+    id: "tlp-concept-010",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "命题1「世界是所有实际情况之所是」中的「实际情况」(Tatsachen / facts) 和「事物」(Dinge / things) 的关系是：",
+    options: [
+      "实际情况是事物的配置（结合方式），是世界的基本构件",
+      "实际情况就是事物本身",
+      "实际情况是人对世界的主观解释",
+      "实际情况和事物没有关系"
+    ],
+    answer: "实际情况是事物的配置（结合方式），是世界的基本构件",
+    explanation: "TLP 1-1.1：世界由事实（facts）构成，而非事物（things）。事实是事物以特定方式配置在一起的状态。"
+  },
+  {
+    id: "tlp-concept-011",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "命题 2.063「全部实在就是世界」和命题 1 的关系是：",
+    options: [
+      "实在 = 实际情况的总和，所有事实的总和就是世界（收敛性陈述）",
+      "实在不同于世界，是一个更大的概念",
+      "实在指物理世界，世界包括心理世界",
+      "两者没有逻辑关联"
+    ],
+    answer: "实在 = 实际情况的总和，所有事实的总和就是世界（收敛性陈述）",
+    explanation: "2.063 将「实在」定义为实际情况的总和，这与 1 的「世界 = 事实总和」形成闭环。事实是唯一的基本存在。"
+  },
+  {
+    id: "tlp-concept-012",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "choice",
+    prompt: "命题 2 的「事态」(Sachverhalt / state of affairs) 和命题 1 的「事实」(Tatsache / fact) 的区别是：",
+    options: [
+      "事态是可能的、简单的情况组合；事实是实际存在的、可能由多个事态构成的复杂情况",
+      "事态和事实完全一样",
+      "事态是主观的，事实是客观的",
+      "事态指未来，事实指过去"
+    ],
+    answer: "事态是可能的、简单的情况组合；事实是实际存在的、可能由多个事态构成的复杂情况",
+    explanation: "2-2.01：事态是对象的结合（可能态），事实是实际存在的事态（更复杂）。事实由事态构成。"
+  },
+  {
+    id: "tlp-relation-010",
+    track: "tractatus",
+    module: "tlp-relation",
+    type: "choice",
+    prompt: "「对象 → 事态 → 事实 → 世界」这条链中，哪个层次对应「逻辑空间中的可能性」？",
+    options: [
+      "事态（在逻辑空间中，对象可以有无限多种结合方式）",
+      "对象",
+      "事实",
+      "世界"
+    ],
+    answer: "事态（在逻辑空间中，对象可以有无限多种结合方式）",
+    explanation: "2.012-2.014：对象包含其所有可能的结合方式（类似于「逻辑形式」），这些可能性构成了事态的逻辑空间。"
+  },
+  {
+    id: "tlp-passage-009",
+    track: "tractatus",
+    module: "tlp-passage",
+    type: "self",
+    prompt: "用自己的话解释命题 2.021/2.022 中「对象构成世界的实体」和「对象是固定的、不变的」这两个主张之间的关系。",
+    subprompt: "提示：如果对象是可变的，世界会是什么样子？为什么维特根斯坦坚持对象不变？",
+    checklist: ["是否解释了不变性对逻辑必然性的意义", "是否举例说明对象 vs 事实的稳定性差异"],
+    sample: "对象不变是因为它们在所有可能世界中是同一的。只有事实/事态可以「发生或不发生」，而对象是可能性本身的前提。如果对象变了，逻辑空间也会随之崩溃。",
+    explanation: "对象的固定性是 TLP 本体论的核心假设之一：世界的变化 = 对象配置的变化，而非对象本身的生灭。",
+    tags: ["passage", "object", "substance", "fixed"]
+  },
+  {
+    id: "tlp-reading-008",
+    track: "tractatus",
+    module: "tlp-reading",
+    type: "choice",
+    prompt: "命题 4.001「命题的总和就是语言」与前面的世界-事实链形成什么关系？",
+    options: [
+      "语言 = 世界：命题描画事实，就像事实描画世界一样，形成一种映射对应",
+      "语言和世界没有直接关系",
+      "语言只是沟通工具，不涉及事实",
+      "命题比事实更基本"
+    ],
+    answer: "语言 = 世界：命题描画事实，就像事实描画世界一样，形成一种映射对应",
+    explanation: "4-4.001：语言（命题的总和）与世界（事实的总和）之间通过「描画关系」对应。这是图式论的核心。"
+  },
+  {
+    id: "tlp-reading-009",
+    track: "tractatus",
+    module: "tlp-reading",
+    type: "choice",
+    prompt: "命题 5.6「我的语言的界限就是我的世界的界限」中的「语言界限」最准确的理解是：",
+    options: [
+      "我能用有意义的命题清晰表达的范围，就是我能有意义地谈论和思考的范围",
+      "我会说的外语种类限制了我对世界的认知",
+      "词汇量越大，世界越大",
+      "这是一种文学修辞，不需要严格解释"
+    ],
+    answer: "我能用有意义的命题清晰表达的范围，就是我能有意义地谈论和思考的范围",
+    explanation: "5.6-5.62：语言界限 = 有意义命题的边界。超出这个边界的就是「不可说的」（伦理、美学、生命意义等），对此应保持沉默（命题 7）。"
+  },
+  {
+    id: "tlp-concept-013",
+    track: "tractatus",
+    module: "tlp-concept",
+    type: "self",
+    prompt: "用「语言界限」的概念，尝试解释为什么维特根斯坦在命题 7 说「对于不可说的东西，必须保持沉默」。这种沉默是消极的还是积极的？",
+    subprompt: "提示：想想 6.54 的「梯子」比喻——说出不可说的东西会导致什么？沉默的目的不是放弃思考，而是什么？",
+    checklist: ["是否区分了「可说」与「不可说」的边界", "是否解释了沉默的积极意义（而非消极回避）"],
+    sample: "沉默不是放弃，而是认识到语言的边界后的一种深刻尊重。不可说的东西（伦理、生命意义）不是不存在，而是不能用命题形式表达。保持沉默 = 用行动/生活本身去「显示」它们。",
+    explanation: "命题 7 是全书最后一句，也是一切的核心：语言有清晰的界限，承认这一点本身就是哲学的最重要姿态。",
+    tags: ["passage", "limit", "silence", "showing"]
   }
 ];
 
@@ -1926,12 +2503,14 @@ function defaultState() {
     activeView: "practice",
     mode: "due",
     dailyGoal: 18,
+    deepseekKey: "",
     activeCommuteSegment: "platform",
     commuteDirection: "morning",
     progress: {},
     customCards: [],
     generatedCards: [],
     analyses: {},
+    diagnosis: {},
     dailyLogs: [],
     history: [],
     queue: [],
@@ -1945,6 +2524,8 @@ function defaultState() {
     cardShownAt: 0,
     analysisOpen: false,
     analyzing: false,
+    chatGptPendingPrompt: "",
+    chatGptPendingCardId: "",
     submitted: false,
     lastResult: null,
     sampleOpen: false,
@@ -2386,24 +2967,48 @@ function learningProfile(trackId) {
     advice = "当前正确率不错，可以增加未见长句和自评复述题，别只停在会选答案。";
   }
 
-  // 日语错因归因：把做错的题按题组归到「词汇 / 语法 / 组句 / 课文长句」，告诉用户错在哪类。
+  // 日语错因归因：按题组 + 按细粒度标签两层归类
   const jpReasonLabels = { "jp-vocab": "词汇", "jp-grammar": "语法", "jp-sentence": "组句", "jp-reading": "课文长句" };
+  const jpTagReasonLabels = {
+    "kanji-reading": "汉字读音", "particle": "助词", "conjugation": "变形",
+    "word-order": "语序", "te-form": "て形", "sentence-pattern": "句型",
+    "vocab": "词义", "grammar": "语法点", "reading": "课文理解",
+    "existence": "存在句", "comparison": "比较"
+  };
   const errorReasonCounts = {};
+  const tagReasonCounts = {};
   if (trackId === "japanese") {
     for (const item of failed) {
+      // 按 module 归类（粗粒度）
       const label = jpReasonLabels[item.module] || "其他";
       errorReasonCounts[label] = (errorReasonCounts[label] || 0) + 1;
+      // 按 tags 归类（细粒度）
+      const card = allCards().find((c) => c.id === item.cardId);
+      if (card) {
+        const tags = cardTags(card);
+        for (const tag of tags) {
+          const tagLabel = jpTagReasonLabels[tag];
+          if (tagLabel) {
+            tagReasonCounts[tagLabel] = (tagReasonCounts[tagLabel] || 0) + 1;
+          }
+        }
+      }
     }
   }
   const errorReasons = Object.entries(errorReasonCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4)
     .map(([label, count]) => ({ label, count }));
+  const tagReasons = Object.entries(tagReasonCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([label, count]) => ({ label, count }));
 
   return {
     track,
     attempts,
     errorReasons,
+    tagReasons,
     weakTags,
     moduleRows,
     focusModule,
@@ -2547,6 +3152,7 @@ function render() {
           ${renderDailyPanel()}
           ${renderVocabPanel()}
           ${renderAiPanel()}
+          ${renderDiagnosisPanel()}
           ${renderStatsPanel(stats)}
           ${renderProfilePanel()}
           ${renderWeakPanel()}
@@ -2681,7 +3287,8 @@ function renderPracticeCard() {
           <span class="tag">${remaining}</span>
         </div>
         <div class="action-row" style="grid-auto-flow: column;">
-          ${card.track === "japanese" ? `<button class="icon-button" data-action="analyze" title="本地模型解析这句日语">解析</button>` : ""}
+          ${card.track === "japanese" ? `<button class="icon-button" data-action="analyze" title="解析这句日语（在 设置→数据同步 填 DeepSeek Key，手机也能直接用）">解析</button>` : ""}
+          ${card.track === "japanese" ? `<button class="icon-button" data-action="chatgpt-analyze" title="没有 Key 时：复制提示词到 ChatGPT 解析">问GPT</button>` : ""}
           ${card.type !== "self" ? `<button class="icon-button" data-action="reveal" title="显示答案">答案</button>` : ""}
           <button class="icon-button" data-action="skip" title="跳过">跳</button>
         </div>
@@ -2694,6 +3301,7 @@ function renderPracticeCard() {
         ${renderAnswerReveal(card)}
         ${renderFeedback(card)}
         ${renderAnalysisBlock(card)}
+        ${renderChatGptPasteBlock(card)}
       </div>
       <div class="card-footer">
         ${renderFooter(card)}
@@ -2854,16 +3462,28 @@ function renderAnswerReveal(card) {
 function renderAnalysisBlock(card) {
   if (card.track !== "japanese") return "";
   if (state.analyzing) {
-    return `<div class="feedback analysis"><strong>本地模型解析中…</strong>正在解析这句日语，请稍候。</div>`;
+    return `<div class="feedback analysis"><strong>解析中…</strong>正在解析这句日语，请稍候。</div>`;
   }
-  const cached = state.analyses?.[card.id];
+  var cached = state.analyses && state.analyses[card.id];
   if (!state.analysisOpen || !cached) return "";
-  return `
-    <div class="feedback analysis">
-      <strong>日语解析（${escapeHtml(cached.provider === "deepseek" ? "DeepSeek" : "本地模型")}）</strong>
-      <div class="analysis-text">${escapeHtml(cached.text).replace(/\n/g, "<br>")}</div>
-    </div>
-  `;
+  var providerLabel = cached.provider === "deepseek-direct" ? "DeepSeek 直连" : cached.provider === "chatgpt" ? "ChatGPT" : cached.provider === "deepseek" ? "DeepSeek（代理）" : "本地模型";
+  return ""
+    + "<div class=\"feedback analysis\">"
+    + "<strong>日语解析（" + escapeHtml(providerLabel) + "）</strong>"
+    + "<div class=\"analysis-text\">" + escapeHtml(cached.text).replace(/\n/g, "<br>") + "</div>"
+    + "</div>";
+}
+
+function renderChatGptPasteBlock(card) {
+  if (card.track !== "japanese") return "";
+  if (!state.chatGptPendingPrompt || state.chatGptPendingCardId !== card.id) return "";
+  return ""
+    + "<div class=\"feedback chatgpt-paste\">"
+    + "<strong>ChatGPT 解析</strong>"
+    + "<p class=\"daily-meta\">提示词已复制到剪贴板。在 ChatGPT 中粘贴并获取解析后，将结果粘贴到下方：</p>"
+    + "<textarea id=\"chatgpt-paste-area\" rows=\"4\" placeholder=\"将 ChatGPT 的解析结果粘贴到这里…\"></textarea>"
+    + "<button class=\"plain-button primary\" data-action=\"chatgpt-paste\" style=\"margin-top:6px\">保存解析结果</button>"
+    + "</div>";
 }
 
 function japaneseTextFor(card) {
@@ -2875,52 +3495,159 @@ function japaneseTextFor(card) {
   return String(card.prompt || "");
 }
 
+// === DeepSeek API 直连（不经过代理，手机/电脑都能用）===
+function deepseekKeyAvailable() {
+  return Boolean(state.deepseekKey && String(state.deepseekKey).trim().length >= 10);
+}
+
+async function callDeepSeekDirect(systemPrompt, userPrompt, temperature) {
+  var key = String(state.deepseekKey || "").trim();
+  if (!key) throw new Error("未设置 DeepSeek API key");
+  var res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+      temperature: temperature != null ? temperature : 0.7,
+      stream: false
+    })
+  });
+  if (!res.ok) {
+    var detail = await res.text().catch(function() { return ""; });
+    var err = new Error("DeepSeek API " + res.status);
+    err.detail = detail.slice(0, 300);
+    throw err;
+  }
+  var data = await res.json();
+  return data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || "";
+}
+
+async function callDeepSeekAnalyze(text) {
+  var up = "请解析下面这句日语，面向以中文为母语的初级学习者。用简洁中文输出，分这几块（每块用小标题，之间空行）：\n1. 假名读音：给整句标注假名。\n2. 逐词拆解：每个词写「词 — 词性 — 意思」，一行一个。\n3. 语法点：助词、动词变形、句型，挑重点讲。\n4. 自然翻译：一句通顺的中文。\n不要输出 JSON 或代码块，直接用纯文本和换行。\n\n句子：" + text;
+  var raw = await callDeepSeekDirect("你是耐心的日语老师，用中文为初级学习者讲解。", up, 0.3);
+  return raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+}
+
+function extractJsonFromText(raw) {
+  var cleaned = String(raw).replace(/<think>[\s\S]*?<\/think>/gi, "");
+  var fenced = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  var jsonStr = fenced ? fenced[1] : cleaned;
+  var start = jsonStr.indexOf("{");
+  var end = jsonStr.lastIndexOf("}");
+  if (start === -1 || end === -1) throw new Error("没有返回 JSON");
+  return JSON.parse(jsonStr.slice(start, end + 1).replace(/,(\s*[}\]])/g, "$1"));
+}
+
 async function analyzeCurrentCard() {
-  const card = getCard();
+  var card = getCard();
   if (!card || card.track !== "japanese") return;
   // 已有解析：切换显示/隐藏
-  if (state.analyses?.[card.id]) {
+  if (state.analyses && state.analyses[card.id]) {
     state.analysisOpen = !state.analysisOpen;
     render();
     return;
   }
-  const text = japaneseTextFor(card);
+  var text = japaneseTextFor(card);
   if (!text) {
     showToast("这张卡没有可解析的日语句子");
     return;
   }
-  const url = String(state.aiProxyUrl || "").replace(/\/+$/, "");
-  if (!url) {
-    showToast("请先在「今日」里填本地代理地址");
+
+  // 优先 DeepSeek 直连
+  if (deepseekKeyAvailable()) {
+    state.analyzing = true; state.analysisOpen = true; render();
+    try {
+      var analysisText = await callDeepSeekAnalyze(text);
+      if (!analysisText) throw new Error("解析为空");
+      state.analyses = state.analyses || {};
+      state.analyses[card.id] = { text: analysisText, provider: "deepseek-direct", at: new Date().toISOString() };
+      state.analyzing = false; state.analysisOpen = true;
+      saveState(); render(); scheduleCloudSync();
+      return;
+    } catch (e) {
+      state.analyzing = false; render();
+      showToast("DeepSeek 直连解析失败：" + (e.message || e));
+      return;
+    }
+  }
+
+  // 回退：本地代理
+  var url = String(state.aiProxyUrl || "").replace(/\/+$/, "");
+  if (!url) { showToast("手机上解析：到「设置 → 数据同步」填一个 DeepSeek Key 即可直连（很便宜）；电脑上也可填本地代理地址。"); return; }
+  state.analyzing = true; state.analysisOpen = true; render();
+  try {
+    var resp = await fetch(url + "/analyze", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: state.analyzeProvider || "local", text: text })
+    });
+    if (!resp.ok) throw new Error("代理返回 " + resp.status);
+    var payload = await resp.json();
+    var at = String(payload.analysis || "").trim();
+    if (!at) throw new Error("解析为空");
+    state.analyses = state.analyses || {};
+    state.analyses[card.id] = { text: at, provider: payload.provider || "local", at: new Date().toISOString() };
+    state.analyzing = false; state.analysisOpen = true;
+    saveState(); render(); scheduleCloudSync();
+  } catch (e) {
+    state.analyzing = false; render();
+    showToast("解析失败：" + (e.message || e) + "。手机上到「设置 → 数据同步」填 DeepSeek Key 即可直连解析；电脑上确保本地代理在运行。");
+  }
+}
+
+// === ChatGPT 剪贴板解析（A 方案：手机端不用 API key）===
+function chatGptPromptFor(card) {
+  var text = japaneseTextFor(card);
+  var ctx = card.context ? card.context.body.join("\n") : "";
+  var p = "请解析下面这句日语，面向以中文为母语的初级学习者。用简洁中文输出，分这几块：\n1. 假名读音\n2. 逐词拆解（词—词性—意思）\n3. 语法点\n4. 自然翻译\n";
+  if (ctx) p += "\n这句出自以下课文语境：\n" + ctx + "\n";
+  p += "\n句子：" + text;
+  return p;
+}
+
+async function handleChatGptAnalyze() {
+  var card = getCard();
+  if (!card || card.track !== "japanese") return;
+  if (state.analyses && state.analyses[card.id]) { state.analysisOpen = !state.analysisOpen; render(); return; }
+  var text = japaneseTextFor(card);
+  if (!text) { showToast("这张卡没有可解析的日语句子"); return; }
+  var prompt = chatGptPromptFor(card);
+  try {
+    await navigator.clipboard.writeText(prompt);
+    showToast("解析提示词已复制到剪贴板，正在跳转 ChatGPT…");
+  } catch (e) {
+    state.chatGptPendingPrompt = prompt;
+    state.chatGptPendingCardId = card.id;
+    render();
+    showToast("请手动复制下方提示词，粘贴到 ChatGPT");
     return;
   }
-  state.analyzing = true;
-  state.analysisOpen = true;
+  state.chatGptPendingPrompt = prompt;
+  state.chatGptPendingCardId = card.id;
+  saveState();
   render();
-  try {
-    const response = await fetch(`${url}/analyze`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ provider: state.analyzeProvider || "local", text })
-    });
-    if (!response.ok) throw new Error(`代理返回 ${response.status}`);
-    const payload = await response.json();
-    const analysisText = String(payload.analysis || "").trim();
-    if (!analysisText) throw new Error("解析为空");
-    state.analyses = {
-      ...state.analyses,
-      [card.id]: { text: analysisText, provider: payload.provider || "local", at: new Date().toISOString() }
-    };
-    state.analyzing = false;
-    state.analysisOpen = true;
-    saveState();
-    render();
-    scheduleCloudSync();
-  } catch (error) {
-    state.analyzing = false;
-    render();
-    showToast(`解析失败：${error.message}。需要本地代理在运行（用 http://localhost 打开网页更稳）。`);
-  }
+  setTimeout(function() {
+    try { window.open("https://chatgpt.com/", "_blank"); } catch (e) {}
+  }, 300);
+}
+
+function handleChatGptPaste() {
+  var ta = document.getElementById("chatgpt-paste-area");
+  if (!ta) return;
+  var result = (ta.value || "").trim();
+  if (!result) { showToast("请先粘贴 ChatGPT 的解析结果"); return; }
+  var cardId = state.chatGptPendingCardId;
+  if (!cardId) { showToast("没有待保存的解析"); return; }
+  state.analyses = state.analyses || {};
+  state.analyses[cardId] = { text: result, provider: "chatgpt", at: new Date().toISOString() };
+  state.chatGptPendingPrompt = "";
+  state.chatGptPendingCardId = "";
+  state.analysisOpen = true;
+  ta.value = "";
+  saveState();
+  render();
+  scheduleCloudSync();
+  showToast("ChatGPT 解析已保存，已同步到云端");
 }
 
 function renderFooter(card) {
@@ -3010,7 +3737,8 @@ function renderProfilePanel() {
     <section class="tool-panel" data-view="progress">
       <h3 class="panel-title">学习档案</h3>
       <p class="profile-advice">${escapeHtml(profile.advice)}</p>
-      ${profile.errorReasons?.length ? `<p class="profile-advice">近期日语错因：${profile.errorReasons.map((reason) => `${escapeHtml(reason.label)} ${reason.count}`).join(" · ")}</p>` : ""}
+      ${profile.errorReasons?.length ? `<p class="profile-advice">近期日语错因（题组）：${profile.errorReasons.map((reason) => `${escapeHtml(reason.label)} ${reason.count}`).join(" · ")}</p>` : ""}
+      ${profile.tagReasons?.length ? `<p class="profile-advice">细粒度弱点：${profile.tagReasons.map((reason) => `${escapeHtml(reason.label)} ${reason.count}`).join(" · ")}</p>` : ""}
       <div class="chip-row">
         <span class="chip">重点：${escapeHtml(focus?.name || "综合复习")}</span>
         <span class="chip">形式：${escapeHtml(formLabel(profile.preferredForm))}</span>
@@ -3123,6 +3851,14 @@ function renderSyncPanel() {
     <section class="custom-panel sync-panel" data-view="settings">
       <h3 class="panel-title">数据同步</h3>
       <div class="cloud-box">
+        <h4>DeepSeek API（直连，推荐）</h4>
+        <p class="daily-meta">前端直接调 DeepSeek API，不需代理，手机和电脑都能用。Key 只存浏览器，不进备份、不进仓库。<a href="https://platform.deepseek.com/api_keys" target="_blank">获取 key</a>（¥1/百万tokens，极便宜）。</p>
+        <label>
+          DeepSeek API Key
+          <input type="password" data-action="deepseek-key" value="${escapeHtml(String(state.deepseekKey || ""))}" placeholder="sk-…" autocomplete="off" />
+        </label>
+      </div>
+      <div class="cloud-box">
         <h4>GitHub 云同步</h4>
         <p class="daily-meta">适合电车上使用：网页放 GitHub Pages，进度放私有 Gist。Token 只保存在当前浏览器。</p>
         <label>
@@ -3201,6 +3937,10 @@ function bindEvents() {
     } else if (action === "sync-text") {
       element.addEventListener("input", (event) => {
         state.syncText = event.target.value;
+      });
+    } else if (action === "deepseek-key") {
+      element.addEventListener("input", (event) => {
+        state.deepseekKey = event.target.value.trim();
       });
     } else if (action === "github-token") {
       element.addEventListener("input", (event) => {
@@ -3352,6 +4092,14 @@ function handleAction(event) {
     analyzeCurrentCard();
     return;
   }
+  if (action === "chatgpt-analyze") {
+    handleChatGptAnalyze();
+    return;
+  }
+  if (action === "chatgpt-paste") {
+    handleChatGptPaste();
+    return;
+  }
 
   if (action === "reveal") {
     state.revealAnswer = true;
@@ -3419,6 +4167,10 @@ function handleAction(event) {
 
   if (action === "ai-generate") {
     generateAiCards();
+    return;
+  }
+  if (action === "ai-diagnose") {
+    handleDiagnose();
   }
 }
 
@@ -3720,9 +4472,11 @@ function handleDailySubmit(event) {
 }
 
 function persistedState() {
-  const { queue, currentId, selected, typed, arranged, tokenOrder, optionOrder, revealAnswer, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, viewAnim, ...persisted } = state;
+  const { queue, currentId, selected, typed, arranged, tokenOrder, optionOrder, revealAnswer, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, viewAnim, chatGptPendingPrompt, chatGptPendingCardId, ...persisted } = state;
   return {
     ...persisted,
+    // 安全：敏感字段不进入备份/Gist JSON
+    deepseekKey: "",
     gitSync: persisted.gitSync ? { ...persisted.gitSync, token: "" } : undefined
   };
 }
@@ -3990,6 +4744,7 @@ function mergeImportedState(incoming) {
   state.dailyLogs = mergeById(state.dailyLogs, incoming.dailyLogs || [], "updatedAt").slice(0, 120);
   state.history = mergeHistory(state.history, incoming.history || []).slice(-600);
   state.analyses = { ...(state.analyses || {}), ...(incoming.analyses || {}) };
+  state.diagnosis = { ...(state.diagnosis || {}), ...(incoming.diagnosis || {}) };
   state.dailyGoal = Number(incoming.dailyGoal || state.dailyGoal) || state.dailyGoal;
   state.activeCommuteSegment = incoming.activeCommuteSegment || state.activeCommuteSegment;
 }
@@ -4149,12 +4904,165 @@ function renderAiPanel() {
   `;
 }
 
+function renderDiagnosisPanel() {
+  const trackId = state.activeTrack;
+  const cached = state.diagnosis?.[trackId];
+  const hasDiagnosis = cached && cached.summary;
+  const trackName = getTrack(trackId).name;
+  let body = "";
+  if (hasDiagnosis) {
+    body = `
+      <div class="diagnosis-result">
+        <p class="diagnosis-meta">上次诊断：${cached.at ? new Date(cached.at).toLocaleString("zh-CN") : "未知"} · ${escapeHtml(cached.provider || "")}</p>
+        <div class="diagnosis-summary">
+          <h4>📋 诊断摘要</h4>
+          <p>${escapeHtml(cached.summary)}</p>
+        </div>
+        ${cached.patterns?.length ? `
+        <div class="diagnosis-patterns">
+          <h4>🔍 问题模式</h4>
+          <ul>${cached.patterns.map((p) => `<li><b>${escapeHtml(p.category)}</b>：${escapeHtml(p.detail)}</li>`).join("")}</ul>
+        </div>` : ""}
+        ${cached.recommendations?.length ? `
+        <div class="diagnosis-recommendations">
+          <h4>💡 改进建议</h4>
+          <ol>${cached.recommendations.map((r) => `<li>${escapeHtml(r)}</li>`).join("")}</ol>
+        </div>` : ""}
+        ${typeof cached.focusCardCount === "number" ? `<p class="daily-meta">已生成 ${cached.focusCardCount} 道针对性练习题，已进入智能推荐队列。</p>` : ""}
+      </div>`;
+  }
+  return `
+    <section class="custom-panel ai-panel" data-view="today">
+      <h3 class="panel-title">学习诊断（DeepSeek / 本地模型）</h3>
+      <p class="daily-meta">
+        把近期的答题数据发给 AI，让它分析你的薄弱模式并生成针对性练习。诊断结果通过 Gist 同步到手机。
+        ${hasDiagnosis ? "" : "建议数天诊断一次，每次积累一些答题后再做。需要在电脑上启动 proxy/ai-proxy.mjs。"}
+      </p>
+      <label>
+        诊断学科
+        <select data-action="diagnosis-track" disabled>${["japanese","english","tractatus"].map((id) => renderSelectOption(id, getTrack(id).name, trackId)).join("")}</select>
+      </label>
+      <button class="plain-button primary full-button" data-action="ai-diagnose">
+        ${hasDiagnosis ? `重新诊断 ${trackName}` : `生成 ${trackName} 诊断`}
+      </button>
+      <p class="daily-meta">${escapeHtml(state.aiMessage || "")}</p>
+      ${body}
+    </section>
+  `;
+}
+
+async function handleDiagnose() {
+  var trackId = state.activeTrack;
+  var track = getTrack(trackId);
+  var profile = learningProfile(trackId);
+  var allHistory = state.history.filter(function(h) { return h.track === trackId; });
+  var recentErrors = allHistory
+    .filter(function(h) { return !h.correct; })
+    .slice(-20)
+    .map(function(h) {
+      var card = allCards().find(function(c) { return c.id === h.cardId; });
+      return {
+        prompt: card ? card.prompt || "" : "",
+        answer: card ? card.answer || "" : "",
+        userAnswer: h.rating === "again" ? "(忘了)" : "(错)",
+        explanation: card ? card.explanation || "" : "",
+        tags: card ? cardTags(card) : []
+      };
+    });
+  var dailyLogs = state.dailyLogs
+    .filter(function(l) { return l.trackId === trackId; })
+    .slice(-3)
+    .map(function(l) { return { date: l.date || "", content: l.content || "", difficulty: l.difficulty || "" }; });
+
+  var profilePayload = {
+    errorReasons: profile.errorReasons,
+    tagReasons: profile.tagReasons,
+    weakTags: profile.weakTags,
+    slowModuleNames: profile.slowModuleNames,
+    moduleRows: profile.moduleRows.map(function(r) { return { name: r.name, accuracy: r.accuracy, due: r.due, avgMs: r.avgMs }; }),
+    advice: profile.advice
+  };
+
+  // DeepSeek 直连优先
+  if (deepseekKeyAvailable()) {
+    state.aiMessage = "正在通过 DeepSeek API 直连诊断…"; saveState();
+    try {
+      var dData = await callDeepSeekDiagnose({ trackName: track.name, profile: profilePayload, recentErrors: recentErrors, dailyLogs: dailyLogs });
+      var diag = dData.diagnosis || {};
+      var focusCards = Array.isArray(diag.focusCards) ? diag.focusCards : [];
+
+      // 保存诊断结果（DeepSeek 直连）
+      state.diagnosis = state.diagnosis || {};
+      state.diagnosis[trackId] = {
+        summary: diag.summary || "", patterns: diag.patterns || [],
+        recommendations: diag.recommendations || [], focusCardCount: focusCards.length,
+        at: new Date().toISOString(), provider: "deepseek-direct"
+      };
+
+      if (focusCards.length) {
+        var now = Date.now();
+        var normalized = focusCards.map(function(raw, i) { return normalizeAiCard(raw, trackId, "diag-" + trackId + "-" + now + "-" + i, "diag-" + now); });
+        state.generatedCards = [
+          ...state.generatedCards.filter(function(card) { return !card.aiSourceLogId || !String(card.aiSourceLogId).startsWith("diag-" + now); }),
+          ...normalized
+        ].slice(-160);
+      }
+
+      saveState(); scheduleCloudSync();
+      state.aiMessage = "诊断完成（DeepSeek 直连）：" + (diag.summary ? diag.summary.slice(0, 60) + "…" : "已生成") + "  |  " + (focusCards.length ? "+" + focusCards.length + " 道针对性题" : "");
+      return;
+    } catch (e) {
+      state.aiMessage = "DeepSeek 直连诊断失败：" + (e.message || e) + "。尝试回退代理…";
+      saveState();
+    }
+  }
+
+  // 回退本地代理
+  var url = (state.aiProxyUrl || "http://127.0.0.1:8799").replace(/\/+$/, "");
+  state.aiMessage = "正在通过代理诊断…"; saveState();
+  try {
+    var res = await fetch(url + "/diagnose", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: state.aiProvider || "deepseek", track: trackId, trackName: track.name,
+        profile: profilePayload, recentErrors: recentErrors, dailyLogs: dailyLogs
+      })
+    });
+    if (!res.ok) { var errText = await res.text(); throw new Error("代理返回 " + res.status + "：" + errText.slice(0, 200)); }
+    var data = await res.json();
+    var diag2 = data.diagnosis || {};
+    var focusCards2 = Array.isArray(diag2.focusCards) ? diag2.focusCards : [];
+
+    state.diagnosis = state.diagnosis || {};
+    state.diagnosis[trackId] = {
+      summary: diag2.summary || "", patterns: diag2.patterns || [],
+      recommendations: diag2.recommendations || [], focusCardCount: focusCards2.length,
+      at: new Date().toISOString(), provider: data.provider || "deepseek"
+    };
+
+    if (focusCards2.length) {
+      var now2 = Date.now();
+      var normalized2 = focusCards2.map(function(raw, i) { return normalizeAiCard(raw, trackId, "diag-" + trackId + "-" + now2 + "-" + i, "diag-" + now2); });
+      state.generatedCards = [
+        ...state.generatedCards.filter(function(card) { return !card.aiSourceLogId || !String(card.aiSourceLogId).startsWith("diag-" + now2); }),
+        ...normalized2
+      ].slice(-160);
+    }
+
+    saveState(); scheduleCloudSync();
+    state.aiMessage = "诊断完成：" + (diag2.summary ? diag2.summary.slice(0, 60) + "…" : "已生成") + "  |  " + (focusCards2.length ? "+" + focusCards2.length + " 道针对性题" : "");
+  } catch (e) {
+    state.aiMessage = "诊断失败：" + (e.message || e).slice(0, 120);
+    saveState();
+  }
+}
+
 function renderVocabPanel() {
   if (state.activeTrack !== "english") return "";
   const words = state.customCards.filter((card) => card.module === "en-vocab" && !card.tags?.includes("reverse"));
   const recent = words.slice(-6).reverse().map((card) => card.word).filter(Boolean);
   return `
-    <section class="custom-panel vocab-panel" data-view="today">
+    <section class="custom-panel vocab-panel" data-view="practice">
       <h3 class="panel-title">英语生词本</h3>
       <p class="daily-meta">把今天遇到的生词加进来，会自动变成填空复习题，并进入智能推荐和同步。</p>
       <form data-action="vocab-form">
@@ -4171,52 +5079,61 @@ function renderVocabPanel() {
 }
 
 async function generateAiCards() {
-  const log = latestDailyLog(state.activeTrack);
-  if (!log) {
-    state.aiMessage = "请先在「今日记录」里保存今天学了什么。";
-    render();
-    return;
+  var log = latestDailyLog(state.activeTrack);
+  if (!log) { state.aiMessage = "请先在「今日记录」里保存今天学了什么。"; render(); return; }
+  var profile = learningProfile(state.activeTrack);
+  var track = getTrack(state.activeTrack);
+
+  // DeepSeek 直连优先
+  if (deepseekKeyAvailable()) {
+    state.aiMessage = "正在通过 DeepSeek API 直连生成题目…"; render();
+    try {
+      var parsed = await callDeepSeekGenerate({
+        trackName: track.name, content: log.content || "", difficulty: log.difficulty || "",
+        form: log.form || "context", weakTags: profile.weakTags, count: 6
+      });
+      var incoming = Array.isArray(parsed.cards) ? parsed.cards : [];
+      var cards = incoming.map(function(c, i) { return normalizeAiCard(c, log, i); }).filter(Boolean);
+      if (!cards.length) throw new Error("没有解析到有效题目");
+      state.generatedCards = [
+        ...state.generatedCards.filter(function(c) { return c.aiSourceLogId !== log.id; }),
+        ...cards
+      ].slice(-160);
+      state.aiMessage = "已用 DeepSeek 直连生成 " + cards.length + " 道题，加入题库；下次同步会上传到手机。";
+      saveState(); buildQueue("adaptive"); scheduleCloudSync();
+      return;
+    } catch (e) {
+      state.aiMessage = "DeepSeek 直连生成失败：" + (e.message || e) + "。尝试回退代理…";
+      render();
+    }
   }
-  const url = String(state.aiProxyUrl || "").replace(/\/+$/, "");
-  if (!url) {
-    state.aiMessage = "请先填写本地代理地址，例如 http://127.0.0.1:8799。";
-    render();
-    return;
-  }
-  state.aiMessage = "正在请求本地代理生成题目...";
-  render();
+
+  // 回退本地代理
+  var url = String(state.aiProxyUrl || "").replace(/\/+$/, "");
+  if (!url) { state.aiMessage = "请设置 DeepSeek API key（推荐）或本地代理地址"; render(); return; }
+  state.aiMessage = "正在请求本地代理生成题目…"; render();
   try {
-    const profile = learningProfile(state.activeTrack);
-    const response = await fetch(`${url}/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    var resp = await fetch(url + "/generate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        provider: state.aiProvider || "deepseek",
-        track: state.activeTrack,
-        trackName: getTrack(state.activeTrack).name,
-        content: log.content || "",
-        difficulty: log.difficulty || "",
-        form: log.form || "context",
-        signals: log.signals || [],
-        weakTags: profile.weakTags,
-        count: 6
+        provider: state.aiProvider || "deepseek", track: state.activeTrack,
+        trackName: track.name, content: log.content || "", difficulty: log.difficulty || "",
+        form: log.form || "context", signals: log.signals || [], weakTags: profile.weakTags, count: 6
       })
     });
-    if (!response.ok) throw new Error(`代理返回 ${response.status}`);
-    const payload = await response.json();
-    const incoming = Array.isArray(payload.cards) ? payload.cards : [];
-    const cards = incoming.map((card, index) => normalizeAiCard(card, log, index)).filter(Boolean);
-    if (!cards.length) throw new Error("没有解析到有效题目，可重试一次");
+    if (!resp.ok) throw new Error("代理返回 " + resp.status);
+    var payload = await resp.json();
+    var incoming2 = Array.isArray(payload.cards) ? payload.cards : [];
+    var cards2 = incoming2.map(function(c, i) { return normalizeAiCard(c, log, i); }).filter(Boolean);
+    if (!cards2.length) throw new Error("没有解析到有效题目，可重试一次");
     state.generatedCards = [
-      ...state.generatedCards.filter((card) => card.aiSourceLogId !== log.id),
-      ...cards
+      ...state.generatedCards.filter(function(c) { return c.aiSourceLogId !== log.id; }),
+      ...cards2
     ].slice(-160);
-    state.aiMessage = `已用「${payload.provider === "local" ? "本地模型" : "DeepSeek"}」生成 ${cards.length} 道题，加入题库；下次同步会上传到手机。`;
-    saveState();
-    buildQueue("adaptive");
-    scheduleCloudSync();
-  } catch (error) {
-    state.aiMessage = `生成失败：${error.message}。请确认本地代理在运行、地址正确；HTTPS 页面调本地 http 可能被拦，可改用 http://localhost 打开网页。`;
+    state.aiMessage = "已用「" + (payload.provider === "local" ? "本地模型" : "DeepSeek") + "」生成 " + cards2.length + " 道题。";
+    saveState(); buildQueue("adaptive"); scheduleCloudSync();
+  } catch (e) {
+    state.aiMessage = "生成失败：" + (e.message || e) + "。请确认代理在运行或设置 DeepSeek API key。";
     render();
   }
 }

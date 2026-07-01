@@ -111,6 +111,64 @@ function buildAnalyzePrompt(text) {
 句子：${text}`;
 }
 
+function buildDiagnosisPrompt(body) {
+  const { trackName = "日语", profile = {}, recentErrors = [], dailyLogs = [] } = body || {};
+  const errorReasons = (profile.errorReasons || []).map((r) => `${r.label}(${r.count}次)`).join("、");
+  const tagReasons = (profile.tagReasons || []).map((r) => `${r.label}(${r.count}次)`).join("、");
+  const weakTags = (profile.weakTags || []).join("、");
+  const slowModules = (profile.slowModuleNames || []).join("、");
+  const moduleRows = (profile.moduleRows || [])
+    .map((r) => `- ${r.name}: 正确率${r.accuracy ?? "未练"}%, 到期${r.due}张, 均速${r.avgMs ? (r.avgMs / 1000).toFixed(1) + "秒" : "无"}`)
+    .join("\n");
+  const errorDetails = recentErrors
+    .map((e) => `[${e.tags?.join(",") || ""}] Q:${e.prompt?.slice(0, 80)} | 正解:${e.answer?.slice(0, 40)} | 答:${e.userAnswer?.slice(0, 40)}`)
+    .join("\n");
+  const logSummaries = dailyLogs
+    .map((l) => `${l.date}: ${(l.content || "").slice(0, 60)}${l.difficulty ? " / 难点:" + l.difficulty.slice(0, 40) : ""}`)
+    .join("\n");
+
+  return `你是经验丰富的语言学习诊断教练。请分析以下${trackName}学习数据，输出一份个性化的学习诊断。
+
+## 学习档案
+- 错因归类（题组）：${errorReasons || "暂无"}
+- 弱点细分（标签）：${tagReasons || "暂无"}
+- 薄弱标签：${weakTags || "暂无"}
+- 偏慢题组：${slowModules || "无"}
+- 各题组数据：
+${moduleRows}
+
+## 最近错题（最多20条）
+${errorDetails || "暂无错题记录"}
+
+## 最近日志
+${logSummaries || "暂无日志"}
+
+## 要求
+请扮演一位耐心、具体的日语教师（或语言教练），用中文给出诊断。只输出一个 JSON 对象，格式：
+{
+  "diagnosis": {
+    "summary": "用2-4句话总结学习者的主要问题模式（具体、可操作，不要泛泛而谈）",
+    "patterns": [
+      {"category": "弱点类别名", "detail": "具体描述错误模式和可能的根因", "cards": ["相关卡片id"]}
+    ],
+    "recommendations": [
+      "具体的改进建议1（可操作的练习策略）",
+      "具体的改进建议2"
+    ],
+    "focusCards": [
+      {"type":"choice|input|arrange|self","prompt":"针对弱点的练习题题干","options":["仅choice需要"],"answer":"正确答案","explanation":"解释","tokens":["仅arrange需要"],"accepted":["仅input需要"]}
+    ]
+  }
+}
+
+规则：
+- patterns 列出2-4个最突出的弱点模式，每个都要引用具体数据
+- recommendations 给2-4条可操作的具体建议，对齐发现的问题模式
+- focusCards 给3-6道针对诊断出弱点的原创练习题，优先填空(input)和组句(arrange)类型
+- 生成的 focusCards 要紧密结合日语课文/长句语境，不要孤立考词汇
+- 只输出 JSON，不要 Markdown 代码块或额外文字`;
+}
+
 async function callModel(provider, systemPrompt, userPrompt, temperature = 0.7) {
   const apiRes = await fetch(provider.url, {
     method: "POST",
@@ -156,7 +214,8 @@ const server = http.createServer((req, res) => {
   }
   const isGenerate = req.method === "POST" && req.url.startsWith("/generate");
   const isAnalyze = req.method === "POST" && req.url.startsWith("/analyze");
-  if (!isGenerate && !isAnalyze) {
+  const isDiagnose = req.method === "POST" && req.url.startsWith("/diagnose");
+  if (!isGenerate && !isAnalyze && !isDiagnose) {
     send(res, 404, { error: "not found" });
     return;
   }
@@ -182,6 +241,22 @@ const server = http.createServer((req, res) => {
     }
 
     try {
+      if (isDiagnose) {
+        const diagnosisContent = await callModel(provider, "你是经验丰富的语言学习诊断教练，只输出 JSON。", buildDiagnosisPrompt(body), 0.5);
+        const parsed = extractJson(diagnosisContent);
+        const diag = parsed.diagnosis || {};
+        const focusCards = Array.isArray(diag.focusCards) ? diag.focusCards.slice(0, 6) : [];
+        console.log(`[diagnose] provider=${provider.name} track=${body.track || "?"} -> ${diag.patterns?.length || 0} patterns, ${focusCards.length} focusCards`);
+        return send(res, 200, {
+          diagnosis: {
+            summary: diag.summary || "",
+            patterns: Array.isArray(diag.patterns) ? diag.patterns.slice(0, 4) : [],
+            recommendations: Array.isArray(diag.recommendations) ? diag.recommendations.slice(0, 4) : [],
+            focusCards
+          },
+          provider: provider.name
+        });
+      }
       if (isAnalyze) {
         const text = String(body.text || "").trim();
         if (!text) return send(res, 400, { error: "缺少要解析的 text" });
@@ -196,7 +271,7 @@ const server = http.createServer((req, res) => {
       console.log(`[generate] provider=${provider.name} track=${body.track || "?"} -> ${cards.length} 题`);
       send(res, 200, { cards, provider: provider.name });
     } catch (error) {
-      console.error(`[${isAnalyze ? "analyze" : "generate"}] provider=${provider.name} 失败:`, error.message);
+      console.error(`[${isDiagnose ? "diagnose" : isAnalyze ? "analyze" : "generate"}] provider=${provider.name} 失败:`, error.message);
       send(res, error.status || 500, { error: String(error.message || error), detail: error.detail });
     }
   });
