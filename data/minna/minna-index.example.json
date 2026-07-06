@@ -1,0 +1,84 @@
+{
+  "source": "minna-no-nihongo",
+  "displayName": "大家的日语",
+  "version": "2026-07-minimal",
+  "note": "这是示例索引。请复制为 minna-index.local.json 并填入你自己的教材页码和词汇/语法数据。不要提交 .local.json 到公开仓库。",
+  "currentLesson": 16,
+  "masteryEstimate": 0.4,
+  "lessons": [
+    {
+      "lesson": 14,
+      "status": "review",
+      "masteryEstimate": 0.4,
+      "pages": [
+        {
+          "pdf": "本册.pdf",
+          "page": 0,
+          "sectionType": "vocabulary",
+          "title": "第14课 单词",
+          "ocrStatus": "pending",
+          "notes": "待OCR或人工整理"
+        },
+        {
+          "pdf": "文法.pdf",
+          "page": 0,
+          "sectionType": "sentence-pattern",
+          "title": "第14课 句型",
+          "ocrStatus": "pending",
+          "notes": "て形相关句型汇总"
+        }
+      ]
+    },
+    {
+      "lesson": 15,
+      "status": "review",
+      "masteryEstimate": 0.4,
+      "pages": [
+        {
+          "pdf": "本册.pdf",
+          "page": 0,
+          "sectionType": "vocabulary",
+          "title": "第15课 单词",
+          "ocrStatus": "pending"
+        },
+        {
+          "pdf": "文法.pdf",
+          "page": 0,
+          "sectionType": "sentence-pattern",
+          "title": "第15课 句型",
+          "ocrStatus": "pending",
+          "notes": "てもいいです / てはいけません 等许可禁止表达"
+        }
+      ]
+    },
+    {
+      "lesson": 16,
+      "status": "active",
+      "masteryEstimate": 0.4,
+      "pages": [
+        {
+          "pdf": "本册.pdf",
+          "page": 0,
+          "sectionType": "vocabulary",
+          "title": "第16课 单词",
+          "ocrStatus": "pending"
+        },
+        {
+          "pdf": "本册.pdf",
+          "page": 0,
+          "sectionType": "reading",
+          "title": "第16课 课文",
+          "ocrStatus": "pending"
+        },
+        {
+          "pdf": "文法.pdf",
+          "page": 0,
+          "sectionType": "sentence-pattern",
+          "title": "第16课 句型",
+          "ocrStatus": "pending",
+          "notes": "て形+います（正在进行/状态）、连接句等"
+        }
+      ]
+    }
+  ]
+}

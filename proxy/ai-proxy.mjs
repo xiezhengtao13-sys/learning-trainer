@@ -1,16 +1,37 @@
 // 本地 AI 出题代理：支持「本地模型 / DeepSeek API」切换。
-// - DeepSeek：API key 只通过环境变量读取，绝不写进前端、仓库或聊天。
+// - DeepSeek：API key 只通过 .env 或环境变量读取，绝不写进前端或仓库。
 // - 本地模型：指向本机 OpenAI 兼容接口（默认 Ollama），不需要联网或密钥。
 //
 // 启动（PowerShell）：
-//   用 DeepSeek：   $env:DEEPSEEK_API_KEY="你的key"; node proxy/ai-proxy.mjs
+//   用 DeepSeek：   node proxy/ai-proxy.mjs（自动读取项目根目录 .env）
 //   用本地模型：    $env:AI_PROVIDER="local"; node proxy/ai-proxy.mjs
-//   （本地模型需先 `ollama serve` 并 `ollama pull qwen2.5`，或用 LM Studio 等）
+//   （本地模型需先 `ollama serve` 并 `ollama pull deepseek-r1:8b`，或用 LM Studio 等）
 //
 // 来源也可由前端按请求指定（body.provider = "deepseek" | "local"），覆盖默认值。
 // 需要 Node 18+（用到内置 fetch）。
 
+import fs from "node:fs";
 import http from "node:http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+    if (!match) continue;
+    const key = match[1];
+    if (process.env[key] !== undefined) continue;
+    process.env[key] = match[2].replace(/^["']|["']$/g, "");
+  }
+}
+
+loadEnvFile(path.resolve(__dirname, "..", ".env"));
 
 const PORT = Number(process.env.PORT || 8799);
 const DEFAULT_PROVIDER = (process.env.AI_PROVIDER || "deepseek").toLowerCase();
@@ -25,7 +46,7 @@ const PROVIDERS = {
   local: {
     // 默认 Ollama 的 OpenAI 兼容接口；LM Studio 用 http://127.0.0.1:1234/v1/chat/completions
     url: process.env.LOCAL_API_URL || "http://127.0.0.1:11434/v1/chat/completions",
-    model: process.env.LOCAL_MODEL || "qwen2.5",
+    model: process.env.LOCAL_MODEL || "deepseek-r1:8b",
     apiKey: process.env.LOCAL_API_KEY || "ollama", // Ollama 不校验，占位即可
     needsKey: false
   }
@@ -51,10 +72,36 @@ function send(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
-function buildPrompt(body) {
-  const { trackName = "学习", content = "", difficulty = "", form = "context", weakTags = [], count = 6 } = body || {};
-  return `你是一个语言/哲学学习出题助手。请根据学习者今天的学习记录，生成 ${count} 道**原创**练习题，不要照抄任何教材正文。
+async function localProviderStatus() {
+  try {
+    const tagsUrl = PROVIDERS.local.url.replace(/\/v1\/chat\/completions\/?$/, "/api/tags");
+    const response = await fetch(tagsUrl, { method: "GET" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    const names = Array.isArray(data.models) ? data.models.map((item) => item.name).filter(Boolean) : [];
+    return {
+      model: PROVIDERS.local.model,
+      url: PROVIDERS.local.url,
+      ready: names.some((name) => name === PROVIDERS.local.model || name.startsWith(`${PROVIDERS.local.model}:`)),
+      serviceReady: true,
+      models: names.slice(0, 12)
+    };
+  } catch {
+    return {
+      model: PROVIDERS.local.model,
+      url: PROVIDERS.local.url,
+      ready: false,
+      serviceReady: false,
+      models: []
+    };
+  }
+}
 
+function buildPrompt(body) {
+  const { trackName = "学习", content = "", difficulty = "", form = "context", weakTags = [], count = 6, n1Context = "" } = body || {};
+  return `你是一个语言/哲学学习出题助手。请根据学习者今天的学习记录，生成 ${count} 道**原创**练习题，不要照抄任何教材正文或真题原文。
+
+${n1Context ? `## 日语N1年度目标\n${n1Context}\n` : ""}
 科目：${trackName}
 今天学了：${content || "（未填）"}
 卡住的点：${difficulty || "（未填）"}
@@ -63,6 +110,9 @@ function buildPrompt(body) {
 
 要求：
 - 紧扣"今天学了"和"卡住的点"。
+- 日语题优先服务一年通过N1：基础自动化、N2/N1文法接续、长句读解、听解影子跟读、输出复述。
+- 日语优先生成 reading 类型短文卡：3-5句原创短文，每句带 kana、zh、grammar、words，帮助逐句解析和收藏生词。
+- 如果今天内容很初级，把题做成「初级基础 → N1表达」的桥接题。
 - 多用填空(input)、组句(arrange)、自评复述(self)，少用纯选择(choice)。
 - 每题给一句简短中文解释(explanation)。
 - 适当为题目配 context（课文/长句 body[] + 译文 translation + 要点 notes[]），帮助在语境中记忆。
@@ -71,6 +121,7 @@ function buildPrompt(body) {
 
 只输出一个 JSON 对象，不要任何额外文字或 Markdown 代码块，格式：
 {"cards":[
+  {"module":"jp-reading","type":"reading","prompt":"阅读短文：...","level":"N3 → N2","summary":"...","sentences":[{"jp":"...","kana":"...","zh":"...","grammar":["..."],"words":[{"text":"...","reading":"...","meaning":"...","tags":["n2"]}]}]},
   {"type":"input","prompt":"...","answer":"...","accepted":["..."],"explanation":"...","context":{"title":"...","body":["..."],"translation":"...","notes":["..."]}},
   {"type":"choice","prompt":"...","options":["A","B","C","D"],"answer":"A","explanation":"..."},
   {"type":"arrange","prompt":"...","tokens":["...","..."],"answer":["...","..."],"explanation":"..."},
@@ -101,18 +152,19 @@ function extractJson(text) {
 }
 
 function buildAnalyzePrompt(text) {
-  return `请解析下面这句日语，面向以中文为母语的初级学习者。用简洁中文输出，分这几块（每块用小标题，之间空行）：
+  return `学习者目标：一年内通过JLPT N1，但当前基础仍在初级阶段。请解析下面这句日语，既讲清当前句子，也指出它和N1读解/听解能力的关系。用简洁中文输出，分这几块（每块用小标题，之间空行）：
 1. 假名读音：给整句标注假名。
 2. 逐词拆解：每个词写「词 — 词性 — 意思」，一行一个。
 3. 语法点：助词、动词变形、句型，挑重点讲。
-4. 自然翻译：一句通顺的中文。
+4. N1连接：这句里哪个表达以后会在N1阅读/听力中反复出现。
+5. 自然翻译：一句通顺的中文。
 不要输出 JSON 或代码块，直接用纯文本和换行。
 
 句子：${text}`;
 }
 
 function buildDiagnosisPrompt(body) {
-  const { trackName = "日语", profile = {}, recentErrors = [], dailyLogs = [] } = body || {};
+  const { trackName = "日语", profile = {}, recentErrors = [], dailyLogs = [], n1Context = "" } = body || {};
   const errorReasons = (profile.errorReasons || []).map((r) => `${r.label}(${r.count}次)`).join("、");
   const tagReasons = (profile.tagReasons || []).map((r) => `${r.label}(${r.count}次)`).join("、");
   const weakTags = (profile.weakTags || []).join("、");
@@ -128,6 +180,8 @@ function buildDiagnosisPrompt(body) {
     .join("\n");
 
   return `你是经验丰富的语言学习诊断教练。请分析以下${trackName}学习数据，输出一份个性化的学习诊断。
+
+${n1Context ? `## N1年度目标\n${n1Context}\n` : ""}
 
 ## 学习档案
 - 错因归类（题组）：${errorReasons || "暂无"}
@@ -162,30 +216,105 @@ ${logSummaries || "暂无日志"}
 }
 
 规则：
-- patterns 列出2-4个最突出的弱点模式，每个都要引用具体数据
-- recommendations 给2-4条可操作的具体建议，对齐发现的问题模式
-- focusCards 给3-6道针对诊断出弱点的原创练习题，优先填空(input)和组句(arrange)类型
-- 生成的 focusCards 要紧密结合日语课文/长句语境，不要孤立考词汇
+- patterns 列出2-4个最突出的弱点模式，每个都要引用具体数据，并说明它如何影响N1读解/听解
+- recommendations 给2-4条可操作的具体建议，对齐发现的问题模式，必须能今天执行
+- focusCards 给3-6道针对诊断出弱点的原创练习题，优先填空(input)、组句(arrange)、读解(choice)和输出复述(self)
+- 生成的 focusCards 要紧密结合日语课文/长句语境，不要孤立考词汇；难度从当前基础向N1过渡
 - 只输出 JSON，不要 Markdown 代码块或额外文字`;
 }
 
+function buildReadingChatPrompt(body) {
+  const { question = "", reading = {}, learning = {} } = body || {};
+  return `你是我的日语阅读教练。我正在用“阅读短文 + 逐句解析 + 收藏生词”的方式准备JLPT N1，但当前基础仍在初级到中级过渡。
+
+请根据我的问题回答，必须贴合当前短文，不要泛泛讲课。
+
+## 我的知识边界
+${JSON.stringify(learning, null, 2)}
+
+## 当前短文
+${JSON.stringify(reading, null, 2)}
+
+## 我的问题
+${question}
+
+回答要求：
+- 用中文讲清楚，必要时保留日语例句。
+- 如果问题涉及语法，说明接续、含义、常见误区。
+- 如果问题涉及生词，给假名、中文、1个相近表达或反义表达。
+- 最后给一个很短的“下一步练习”。`;
+}
+
+function buildReadingPassagePrompt(body) {
+  const { learning = {} } = body || {};
+  return `你是日语分级阅读编辑。请基于我的知识边界，创作一篇原创日语短文，作为下一张阅读训练卡。
+
+## 我的知识边界
+${JSON.stringify(learning, null, 2)}
+
+要求：
+- 难度从当前基础向N1推进，不要突然过难。
+- 优先复现我标记忘记的词、薄弱助词/接续和当前N1阶段重点。
+- 3-5句，每句自然、短而清楚。
+- 每句必须给 kana、中文 zh、grammar 数组、words 数组。
+- words 每项包含 text, reading, meaning, tags。
+- 只输出 JSON，不要 Markdown。
+
+格式：
+{
+  "card": {
+    "prompt": "阅读短文：标题",
+    "level": "N3 → N2",
+    "summary": "这篇短文练什么",
+    "sentences": [
+      {
+        "jp": "日语句子。",
+        "kana": "假名读音。",
+        "zh": "中文翻译。",
+        "grammar": ["语法点1", "语法点2"],
+        "words": [{"text":"単語","reading":"たんご","meaning":"单词","tags":["n2"]}]
+      }
+    ]
+  }
+}`;
+}
+
 async function callModel(provider, systemPrompt, userPrompt, temperature = 0.7) {
-  const apiRes = await fetch(provider.url, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${provider.apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: provider.model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature,
-      stream: false
-    })
-  });
+  if (provider.name === "local" && provider.url.includes("127.0.0.1:11434")) {
+    return callOllamaNative(provider, systemPrompt, userPrompt, temperature);
+  }
+
+  let apiRes;
+  try {
+    apiRes = await fetch(provider.url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${provider.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: provider.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature,
+        stream: false
+      })
+    });
+  } catch (cause) {
+    const error = new Error(
+      provider.name === "local"
+        ? `本地模型连接失败：请先安装并启动 Ollama，再运行 ollama pull ${provider.model}。当前地址：${provider.url}`
+        : `${provider.name} 连接失败：${cause.message || cause}`
+    );
+    error.status = 502;
+    throw error;
+  }
   if (!apiRes.ok) {
     const detail = await apiRes.text();
-    const error = new Error(`${provider.name} ${apiRes.status}`);
+    const error = new Error(
+      provider.name === "local" && apiRes.status === 404
+        ? `本地模型 ${provider.model} 不存在，请先运行 ollama pull ${provider.model}`
+        : `${provider.name} ${apiRes.status}`
+    );
     error.status = 502;
     error.detail = detail.slice(0, 500);
     throw error;
@@ -194,7 +323,61 @@ async function callModel(provider, systemPrompt, userPrompt, temperature = 0.7) 
   return data?.choices?.[0]?.message?.content || "";
 }
 
-const server = http.createServer((req, res) => {
+async function callOllamaNative(provider, systemPrompt, userPrompt, temperature = 0.7) {
+  const apiUrl = provider.url.replace(/\/v1\/chat\/completions\/?$/, "/api/chat");
+  let apiRes;
+  try {
+    apiRes = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: provider.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        stream: false,
+        think: false,
+        options: {
+          temperature,
+          num_predict: 1400
+        }
+      })
+    });
+  } catch (cause) {
+    const error = new Error(`本地模型连接失败：请确认 Ollama 正在运行，且已安装 ${provider.model}。当前地址：${apiUrl}`);
+    error.status = 502;
+    throw error;
+  }
+
+  if (!apiRes.ok) {
+    const detail = await apiRes.text();
+    const error = new Error(
+      apiRes.status === 404
+        ? `本地模型 ${provider.model} 不存在，请先运行 ollama pull ${provider.model}`
+        : `local ${apiRes.status}`
+    );
+    error.status = 502;
+    error.detail = detail.slice(0, 500);
+    throw error;
+  }
+
+  const data = await apiRes.json();
+  const content = String(data?.message?.content || "").trim();
+  if (content) return content;
+
+  const thinking = String(data?.message?.thinking || "").trim();
+  if (thinking) {
+    const error = new Error(`本地 ${provider.model} 只返回了思考内容，没有返回正文。建议本次切回 DeepSeek API，或改用 qwen3:8b / gemma3:4b。`);
+    error.status = 502;
+    error.detail = thinking.slice(0, 300);
+    throw error;
+  }
+
+  throw new Error(`本地 ${provider.model} 返回为空`);
+}
+
+const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") {
     cors(res);
     res.writeHead(204);
@@ -207,7 +390,7 @@ const server = http.createServer((req, res) => {
       defaultProvider: DEFAULT_PROVIDER,
       providers: {
         deepseek: { model: PROVIDERS.deepseek.model, ready: Boolean(PROVIDERS.deepseek.apiKey) },
-        local: { model: PROVIDERS.local.model, url: PROVIDERS.local.url, ready: true }
+        local: await localProviderStatus()
       }
     });
     return;
@@ -215,7 +398,9 @@ const server = http.createServer((req, res) => {
   const isGenerate = req.method === "POST" && req.url.startsWith("/generate");
   const isAnalyze = req.method === "POST" && req.url.startsWith("/analyze");
   const isDiagnose = req.method === "POST" && req.url.startsWith("/diagnose");
-  if (!isGenerate && !isAnalyze && !isDiagnose) {
+  const isChat = req.method === "POST" && req.url.startsWith("/chat");
+  const isReadingPassage = req.method === "POST" && req.url.startsWith("/reading-passage");
+  if (!isGenerate && !isAnalyze && !isDiagnose && !isChat && !isReadingPassage) {
     send(res, 404, { error: "not found" });
     return;
   }
@@ -241,6 +426,18 @@ const server = http.createServer((req, res) => {
     }
 
     try {
+      if (isChat) {
+        const reply = await callModel(provider, "你是耐心、准确的日语阅读教练。", buildReadingChatPrompt(body), 0.35);
+        const cleaned = reply.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+        console.log(`[chat] provider=${provider.name} -> ${cleaned.length} 字`);
+        return send(res, 200, { reply: cleaned, provider: provider.name });
+      }
+      if (isReadingPassage) {
+        const content = await callModel(provider, "你是日语分级阅读编辑，只输出 JSON。", buildReadingPassagePrompt(body), 0.55);
+        const parsed = extractJson(content);
+        console.log(`[reading-passage] provider=${provider.name}`);
+        return send(res, 200, parsed);
+      }
       if (isDiagnose) {
         const diagnosisContent = await callModel(provider, "你是经验丰富的语言学习诊断教练，只输出 JSON。", buildDiagnosisPrompt(body), 0.5);
         const parsed = extractJson(diagnosisContent);
@@ -271,7 +468,7 @@ const server = http.createServer((req, res) => {
       console.log(`[generate] provider=${provider.name} track=${body.track || "?"} -> ${cards.length} 题`);
       send(res, 200, { cards, provider: provider.name });
     } catch (error) {
-      console.error(`[${isDiagnose ? "diagnose" : isAnalyze ? "analyze" : "generate"}] provider=${provider.name} 失败:`, error.message);
+      console.error(`[${isChat ? "chat" : isReadingPassage ? "reading-passage" : isDiagnose ? "diagnose" : isAnalyze ? "analyze" : "generate"}] provider=${provider.name} 失败:`, error.message);
       send(res, error.status || 500, { error: String(error.message || error), detail: error.detail });
     }
   });

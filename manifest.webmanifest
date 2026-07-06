@@ -5,7 +5,7 @@
   "display": "standalone",
   "background_color": "#f6f7f2",
   "theme_color": "#f6f7f2",
-  "description": "面向通勤场景的日语、英语和逻辑哲学论练习工具。",
+  "description": "面向通勤场景的日语N1、英语和逻辑哲学论练习工具。",
   "icons": [
     {
       "src": "./icon.svg",

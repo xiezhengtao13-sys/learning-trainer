@@ -13,3 +13,7 @@ Thumbs.db
 
 # 依赖（本项目当前无构建依赖，预留）
 node_modules/
+
+# 教材本地索引与原文：不提交用户本机的 OCR 结果和 PDF 原始文件
+data/minna/*.local.json
+minasang/*.pdf

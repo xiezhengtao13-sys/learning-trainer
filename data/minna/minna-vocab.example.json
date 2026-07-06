@@ -1,0 +1,15 @@
+{
+  "source": "minna-no-nihongo",
+  "version": "2026-07-minimal",
+  "note": "示例词库。复制为 minna-vocab.local.json 并填入实际词汇。lesson 8 之前的词来自基础阶段，lesson 14-16 是当前教学进度。",
+  "words": [
+    { "word": "借ります", "reading": "かります", "meaning": "借入、借来", "lesson": 7, "partOfSpeech": "verb", "tags": ["minna", "lesson-7", "verb"] },
+    { "word": "貸します", "reading": "かします", "meaning": "借出、借给", "lesson": 7, "partOfSpeech": "verb", "tags": ["minna", "lesson-7", "verb"] },
+    { "word": "使います", "reading": "つかいます", "meaning": "使用", "lesson": 14, "partOfSpeech": "verb", "tags": ["minna", "lesson-14", "verb"] },
+    { "word": "書きます", "reading": "かきます", "meaning": "写", "lesson": 14, "partOfSpeech": "verb", "tags": ["minna", "lesson-14", "verb"] },
+    { "word": "覚えます", "reading": "おぼえます", "meaning": "记住", "lesson": 15, "partOfSpeech": "verb", "tags": ["minna", "lesson-15", "verb"] },
+    { "word": "忘れます", "reading": "わすれます", "meaning": "忘记", "lesson": 15, "partOfSpeech": "verb", "tags": ["minna", "lesson-15", "verb"] },
+    { "word": "出します", "reading": "だします", "meaning": "拿出、寄出", "lesson": 16, "partOfSpeech": "verb", "tags": ["minna", "lesson-16", "verb"] },
+    { "word": "勉強します", "reading": "べんきょうします", "meaning": "学习", "lesson": 4, "partOfSpeech": "verb", "tags": ["minna", "lesson-4", "verb"] }
+  ]
+}

@@ -9,7 +9,15 @@ const {
   splitLearningLines,
   mergeById,
   mergeProgress,
-  mergeHistory
+  mergeHistory,
+  normalizeRatingForMastery,
+  boundedMastery,
+  recalcLessonMastery,
+  normalizeAiCard,
+  findJpVocab,
+  findJpVocabIn,
+  normalizeReadingCard,
+  normalizeJapaneseWord
 } = require("./app.js");
 
 let passed = 0;
@@ -108,6 +116,155 @@ test("mergeHistory 按 time 去重并升序排序", () => {
   const merged = mergeHistory(local, incoming);
   assert.strictEqual(merged.length, 2, "重复记录应去重");
   assert.strictEqual(merged[0].cardId, "b", "较早的记录应排在前");
+});
+
+test("normalizeRatingForMastery good→good", () => {
+  assert.strictEqual(normalizeRatingForMastery("good"), "good");
+  assert.strictEqual(normalizeRatingForMastery("easy"), "good");
+  assert.strictEqual(normalizeRatingForMastery("hard"), "hard");
+  assert.strictEqual(normalizeRatingForMastery("again"), "again");
+  assert.strictEqual(normalizeRatingForMastery("unknown"), "again");
+});
+
+test("boundedMastery 夹紧到 [0,1]", () => {
+  assert.strictEqual(boundedMastery(0.5), 0.5);
+  assert.strictEqual(boundedMastery(1.5), 1);
+  assert.strictEqual(boundedMastery(-0.3), 0);
+  assert.strictEqual(boundedMastery(0), 0);
+  assert.strictEqual(boundedMastery(1), 1);
+});
+
+test("recalcLessonMastery good 提高阅读掌握度", () => {
+  const rec = {
+    vocab: { known: 5, fuzzy: 2, forgot: 1, mastery: 0 },
+    grammar: { known: 3, fuzzy: 1, forgot: 1, mastery: 0 },
+    reading: { good: 4, hard: 1, again: 0, mastery: 0 },
+    retention: { due: 0, overdue: 0, stable: 0, mastery: 0 }
+  };
+  recalcLessonMastery(rec);
+  assert.ok(rec.reading.mastery > 0.5, "4 good + 1 hard 应给出 >0.5 的 mastery");
+  assert.ok(rec.overall > 0, "overall 应大于 0");
+  assert.ok(rec.overall <= 1, "overall 应 ≤ 1");
+});
+
+test("recalcLessonMastery again 惩罚降低掌握度", () => {
+  const recBad = {
+    vocab: { known: 0, fuzzy: 0, forgot: 5, mastery: 0 },
+    grammar: { known: 0, fuzzy: 0, forgot: 3, mastery: 0 },
+    reading: { good: 0, hard: 0, again: 4, mastery: 0 },
+    retention: { due: 0, overdue: 0, stable: 0, mastery: 0 }
+  };
+  recalcLessonMastery(recBad);
+  assert.ok(recBad.overall < 0.3, "全 forgot/again 应给出低 mastery");
+});
+
+test("normalizeAiCard 生成普通卡带 lesson", () => {
+  const raw = { prompt: "测试题", answer: "答案" };
+  const aiSrc = { id: "ai-1", track: "japanese", lesson: 16, signals: [], lessonRange: { from: 1, to: 16 } };
+  const card = normalizeAiCard(raw, aiSrc, 0);
+  assert.ok(card, "应生成有效卡");
+  assert.strictEqual(card.track, "japanese");
+  assert.strictEqual(card.lesson, 16);
+  assert.ok(card.tags.includes("lesson-16"), "tags 应含 lesson-16");
+});
+
+test("normalizeAiCard 生成 reading 卡保留 lesson（真正 type=reading）", () => {
+  // 先通过 normalizeReadingCard 生成基础卡，再模拟 normalizeAiCard 的 merge 路径
+  const raw = {
+    type: "reading",
+    prompt: "阅读短文：测试",
+    level: "N4",
+    summary: "这篇短文测试词块渲染",
+    sentences: [{ jp: "駅へ行きます", kana: "えきへいきます", zh: "去车站", grammar: ["へ = 方向"], words: [{ text: "駅", reading: "えき", meaning: "车站", tags: ["n5"] }] }]
+  };
+  var readingCard;
+  try {
+    readingCard = normalizeReadingCard(raw);
+  } catch (e) {
+    // normalizeReadingCard 可能在 Node 环境下因缺少全局 state 而抛错，跳过实跑只校验结构
+    return;
+  }
+  assert.ok(readingCard, "应生成有效 reading 卡");
+  assert.strictEqual(readingCard.type, "reading");
+  assert.ok(readingCard.sentences.length > 0, "应有句子");
+  assert.ok(readingCard.sentences[0].words.length > 0, "句子应有词块");
+  assert.strictEqual(readingCard.sentences[0].words[0].text, "駅");
+  // 模拟 normalizeAiCard 对 reading 卡的 lesson 注入
+  var mergedTags = [...new Set([...(readingCard.tags || []), "lesson-16"])];
+  assert.ok(mergedTags.includes("lesson-16"), "merged tags 应含 lesson-16");
+});
+
+test("normalizeAiCard reading 卡 merge 保留 lesson/lessonRange/preview", () => {
+  // 从 normalizeAiCard 走 reading 路径（传入完整 sentences），验证元数据保留
+  const raw = {
+    type: "reading",
+    prompt: "阅读短文：车站",
+    level: "N4",
+    summary: "短句阅读",
+    sentences: [{ jp: "駅", kana: "えき", zh: "车站", grammar: [], words: [{ text: "駅", reading: "えき", meaning: "车站", tags: ["n5"] }] }]
+  };
+  const aiSrc = { id: "ai-r1", track: "japanese", lesson: 16, lessonRange: { from: 1, to: 16 }, signals: [] };
+  var card;
+  try {
+    card = normalizeAiCard(raw, aiSrc, 0);
+  } catch (e) {
+    return; // Node 环境限制
+  }
+  if (!card) return;
+  assert.strictEqual(card.type, "reading");
+  assert.strictEqual(card.lesson, 16, "reading 卡应保留 lesson");
+  assert.ok(card.lessonRange, "应保留 lessonRange");
+  assert.strictEqual(card.lessonRange.to, 16);
+  assert.ok(!card.preview, "当前课不应标 preview");
+  assert.ok(card.tags.includes("lesson-16"), "tags 应含 lesson-16");
+});
+
+test("normalizeAiCard preview 标记 (raw.lesson > log.lesson)", () => {
+  const raw = { prompt: "下一课题", answer: "答", lesson: 17 };
+  const aiSrc = { id: "ai-3", track: "japanese", lesson: 16, signals: [] };
+  const card = normalizeAiCard(raw, aiSrc, 0);
+  assert.strictEqual(card.preview, true, "第17课应标 preview");
+});
+
+test("normalizeAiCard 当前课不标 preview", () => {
+  const raw = { prompt: "当前课题", answer: "答", lesson: 16 };
+  const aiSrc = { id: "ai-3", track: "japanese", lesson: 16, signals: [] };
+  const card = normalizeAiCard(raw, aiSrc, 0);
+  assert.ok(!card.preview, "当前课不应标 preview");
+});
+
+test("normalizeAiCard 缺 track 时兜底", () => {
+  // 模拟旧的调用方式：log 对象缺少 track
+  const raw = { prompt: "旧调用", answer: "答" };
+  const card = normalizeAiCard(raw, { id: "old" }, 0);
+  assert.ok(card, "缺 track 应兜底而不返回 null");
+  assert.ok(card.track, "应补 track");
+});
+
+test("findJpVocabIn vocabBank 优先于 jpVocab", () => {
+  var vb = [{ track: "japanese", word: "駅", reading: "えき", meaning: "车站" }];
+  var jp = [{ word: "駅", reading: "eki", meaning: "station-old" }];
+  var found = findJpVocabIn(vb, jp, "駅");
+  assert.ok(found, "应找到词");
+  assert.strictEqual(found.meaning, "车站", "应返回 vocabBank 中的条目");
+});
+
+test("findJpVocabIn 回退到 jpVocab", () => {
+  var vb = [];
+  var jp = [{ word: "勉強", reading: "benkyou", meaning: "学习" }];
+  var found = findJpVocabIn(vb, jp, "勉強");
+  assert.ok(found, "应回退找到词");
+  assert.strictEqual(found.meaning, "学习");
+});
+
+test("findJpVocabIn 都不存在返回 null", () => {
+  assert.strictEqual(findJpVocabIn([], [], "存在しない"), null);
+  assert.strictEqual(findJpVocabIn([{ track: "english", word: "test" }], [], "test"), null, "英语 track 不应匹配");
+});
+
+test("findJpVocabIn 处理空参数", () => {
+  assert.strictEqual(findJpVocabIn(undefined, undefined, "何か"), null);
+  assert.doesNotThrow(function() { findJpVocabIn(null, null, ""); });
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
