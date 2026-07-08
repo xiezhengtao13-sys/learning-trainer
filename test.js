@@ -134,20 +134,34 @@ test("boundedMastery 夹紧到 [0,1]", () => {
   assert.strictEqual(boundedMastery(1), 1);
 });
 
-test("recalcLessonMastery good 提高阅读掌握度", () => {
+test("recalcLessonMastery known/total 比例计算", () => {
   const rec = {
-    vocab: { known: 5, fuzzy: 2, forgot: 1, mastery: 0 },
-    grammar: { known: 3, fuzzy: 1, forgot: 1, mastery: 0 },
+    vocab: { known: 8, fuzzy: 1, forgot: 1, mastery: 0 },
+    grammar: { known: 8, fuzzy: 1, forgot: 1, mastery: 0 },
     reading: { good: 4, hard: 1, again: 0, mastery: 0 },
     retention: { due: 0, overdue: 0, stable: 0, mastery: 0 }
   };
   recalcLessonMastery(rec);
-  assert.ok(rec.reading.mastery > 0.5, "4 good + 1 hard 应给出 >0.5 的 mastery");
-  assert.ok(rec.overall > 0, "overall 应大于 0");
-  assert.ok(rec.overall <= 1, "overall 应 ≤ 1");
+  assert.strictEqual(rec.vocab.mastery, 0.8, "8/10 known → 0.80");
+  assert.strictEqual(rec.grammar.mastery, 0.8, "8/10 known → 0.80");
+  assert.strictEqual(rec.reading.mastery, 0.8, "4/5 good → 0.80");
+  assert.strictEqual(rec.overall, 0.8, "vocab 0.8 * 0.5 + grammar 0.8 * 0.5 = 0.8");
 });
 
-test("recalcLessonMastery again 惩罚降低掌握度", () => {
+test("recalcLessonMastery fuzzy 不加分", () => {
+  const rec = {
+    vocab: { known: 0, fuzzy: 10, forgot: 0, mastery: 0 },
+    grammar: { known: 0, fuzzy: 10, forgot: 0, mastery: 0 },
+    reading: { good: 0, hard: 10, again: 0, mastery: 0 },
+    retention: { due: 0, overdue: 0, stable: 0, mastery: 0 }
+  };
+  recalcLessonMastery(rec);
+  assert.strictEqual(rec.vocab.mastery, 0, "全 fuzzy → mastery = 0");
+  assert.strictEqual(rec.grammar.mastery, 0, "全 fuzzy → mastery = 0");
+  assert.strictEqual(rec.overall, 0, "全 fuzzy → overall = 0");
+});
+
+test("recalcLessonMastery 全 forgot 给 0", () => {
   const recBad = {
     vocab: { known: 0, fuzzy: 0, forgot: 5, mastery: 0 },
     grammar: { known: 0, fuzzy: 0, forgot: 3, mastery: 0 },
@@ -155,7 +169,33 @@ test("recalcLessonMastery again 惩罚降低掌握度", () => {
     retention: { due: 0, overdue: 0, stable: 0, mastery: 0 }
   };
   recalcLessonMastery(recBad);
-  assert.ok(recBad.overall < 0.3, "全 forgot/again 应给出低 mastery");
+  assert.strictEqual(recBad.overall, 0, "全 forgot → overall = 0");
+});
+
+test("maybeAdvanceLesson vocab+grammar 均≥80% 才推进", () => {
+  const rec80 = {
+    vocab: { known: 8, fuzzy: 1, forgot: 1, mastery: 0 },
+    grammar: { known: 8, fuzzy: 1, forgot: 1, mastery: 0 },
+    reading: { good: 1, hard: 0, again: 0, mastery: 0 },
+    retention: { due: 0, overdue: 0, stable: 0, mastery: 0 },
+    blockers: [], canPreview: false, canAdvance: false
+  };
+  recalcLessonMastery(rec80);
+  assert.ok(rec80.vocab.mastery >= 0.80, "vocab 应 ≥ 0.80");
+  assert.ok(rec80.grammar.mastery >= 0.80, "grammar 应 ≥ 0.80");
+});
+
+test("maybeAdvanceLesson vocab<80% 不推进", () => {
+  const rec79 = {
+    vocab: { known: 7, fuzzy: 2, forgot: 1, mastery: 0 },
+    grammar: { known: 9, fuzzy: 0, forgot: 1, mastery: 0 },
+    reading: { good: 5, hard: 0, again: 0, mastery: 0 },
+    retention: { due: 0, overdue: 0, stable: 0, mastery: 0 },
+    blockers: [], canPreview: false, canAdvance: false
+  };
+  recalcLessonMastery(rec79);
+  assert.ok(rec79.vocab.mastery < 0.80, "vocab 7/10=0.70 应 < 0.80");
+  assert.ok(rec79.grammar.mastery >= 0.80, "grammar 9/10=0.90 应 ≥ 0.80");
 });
 
 test("normalizeAiCard 生成普通卡带 lesson", () => {
