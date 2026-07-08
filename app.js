@@ -2972,6 +2972,7 @@ function defaultState() {
     readingChatInput: "",
     readingAiBusy: false,
     readingAiMessage: "",
+    selectionDraft: null,
     analyses: {},
     diagnosis: {},
     dailyLogs: [],
@@ -4013,6 +4014,7 @@ function render() {
         ${renderPracticeCard()}
         <div class="side-stack">
           ${renderLearningOverviewPanel(stats)}
+          ${renderVocabPanel()}
         </div>
       </div>
     </main>
@@ -4024,6 +4026,7 @@ function render() {
   app.dataset.view = state.activeView || "practice";
   state.viewAnim = false;
   bindEvents();
+  bindSelectionListener();
 }
 
 // ===== 设置窗口 =====
@@ -4470,6 +4473,7 @@ function renderReadingLab(card) {
         <button class="plain-button" data-action="collect-selection">收藏选中文本</button>
         <button class="plain-button" data-action="speak">朗读全文</button>
       </div>
+      ${renderSelectionFloatingBar()}
       ${renderReadingChat(card, chat)}
       ${state.readingAiMessage ? `<p class="daily-meta">${escapeHtml(state.readingAiMessage)}</p>` : ""}
     </div>
@@ -4527,11 +4531,56 @@ function renderWordChip(card, sentence, word, index) {
     tags: (word.tags || []).concat(["minna", "lesson-" + (card.lesson || cls.lesson)])
   }));
   return `
-    <button class="word-chip${saved ? " is-saved" : ""}" data-action="collect-word" data-word="${payload}" title="${escapeHtml(word.reading || "")} ${escapeHtml(word.meaning || "")}">
+    <button class="word-chip${saved ? (saved.meaning === "待解析" ? " is-pending" : " is-saved") : ""}" data-action="collect-word" data-word="${payload}" title="${escapeHtml(word.reading || "")} ${escapeHtml(word.meaning || "")}">
       <b>${escapeHtml(word.text)}</b>
       <small>${escapeHtml(word.reading || "")} · ${escapeHtml(word.meaning || "")}</small>
     </button>
   `;
+}
+
+function renderSelectionFloatingBar() {
+  var draft = state.selectionDraft;
+  if (!draft) return "";
+  return `
+    <div class="selection-float-bar">
+      <span>已选：<b>${escapeHtml(draft.text)}</b></span>
+      <button class="plain-button primary" data-action="float-collect-word">收藏词</button>
+      <button class="plain-button" data-action="float-dismiss">取消</button>
+    </div>
+  `;
+}
+
+var _selectionBound = false;
+function bindSelectionListener() {
+  if (_selectionBound || typeof document === "undefined") return;
+  _selectionBound = true;
+  document.addEventListener("pointerup", function(e) {
+    var sentenceEl = e.target.closest(".reading-sentence");
+    if (!sentenceEl) {
+      if (state.selectionDraft) { state.selectionDraft = null; render(); }
+      return;
+    }
+    if (e.target.closest("[data-action]")) return;
+    var sel = window.getSelection();
+    var text = String(sel || "").trim();
+    if (!text || text.length > 30) {
+      if (state.selectionDraft) { state.selectionDraft = null; render(); }
+      return;
+    }
+    var cardId = sentenceEl.dataset.cardId;
+    var sentenceIndex = parseInt(sentenceEl.dataset.sentenceIndex, 10);
+    var card = getCard(cardId) || {};
+    var sentences = Array.isArray(card.sentences) ? card.sentences : [];
+    var s = sentences[sentenceIndex];
+    var sourceSentence = s ? normalizeReadingSentence(s).text : readingCardText(card);
+    state.selectionDraft = {
+      text: text,
+      cardId: cardId,
+      sentenceIndex: sentenceIndex,
+      sourceSentence: sourceSentence
+    };
+    render();
+  });
 }
 
 function renderReadingChat(card, chat) {
@@ -5769,6 +5818,80 @@ function handleAction(event) {
     return;
   }
 
+  if (action === "float-collect-word") {
+    if (state.selectionDraft) {
+      var draft = state.selectionDraft;
+      var cls = currentLessonState();
+      collectJpVocab({
+        word: draft.text,
+        reading: "",
+        meaning: "待解析",
+        sentence: draft.sourceSentence,
+        sourceCardId: draft.cardId,
+        sentenceIndex: draft.sentenceIndex,
+        lesson: cls.lesson,
+        tags: ["selected", "minna", "lesson-" + cls.lesson]
+      });
+      state.selectionDraft = null;
+    }
+    return;
+  }
+
+  if (action === "float-dismiss") {
+    state.selectionDraft = null;
+    render();
+    return;
+  }
+
+  if (action === "vocab-edit") {
+    var editWord = button.dataset.word;
+    var newReading = prompt("假名（可留空）：", "");
+    var newMeaning = prompt("释义：", "");
+    if (newMeaning && newMeaning.trim()) {
+      var editItem = findJpVocab(editWord);
+      if (editItem) {
+        editItem.reading = newReading || editItem.reading || "";
+        editItem.meaning = newMeaning.trim();
+        editItem.updatedAt = new Date().toISOString();
+        var editVb = (state.vocabBank || []).find(function(v) {
+          return v.track === "japanese" && normalizeJapaneseWord(v.word) === normalizeJapaneseWord(editWord);
+        });
+        if (editVb) {
+          editVb.reading = editItem.reading;
+          editVb.meaning = editItem.meaning;
+          editVb.updatedAt = editItem.updatedAt;
+        }
+        var editCardId = "jp-vocab-custom-" + normalizeJapaneseWord(editWord);
+        state.customCards = state.customCards.filter(function(card) { return card.id !== editCardId; });
+        maybeCreateJpVocabCard(editItem);
+        saveState(); render(); scheduleCloudSync();
+        showToast("已补充释义：" + editWord);
+      }
+    }
+    return;
+  }
+
+  if (action === "vocab-delete") {
+    var delWord = button.dataset.word;
+    var nw = normalizeJapaneseWord(delWord);
+    state.jpVocab = (state.jpVocab || []).filter(function(item) {
+      return normalizeJapaneseWord(item.word) !== nw;
+    });
+    state.vocabBank = (state.vocabBank || []).filter(function(item) {
+      return !(item.track === "japanese" && normalizeJapaneseWord(item.word) === nw);
+    });
+    var delCardId = "jp-vocab-custom-" + nw;
+    state.customCards = state.customCards.filter(function(card) { return card.id !== delCardId; });
+    saveState(); render(); scheduleCloudSync();
+    showToast("已删除：" + delWord);
+    return;
+  }
+
+  if (action === "vocab-enrich") {
+    enrichVocabFromAi(button.dataset.word, button.dataset.sentence || "");
+    return;
+  }
+
   if (action === "collect-grammar") {
     try {
       var grammarData = JSON.parse(decodeURIComponent(button.dataset.grammar || ""));
@@ -6350,9 +6473,25 @@ function collectJpVocab(raw) {
 }
 
 function maybeCreateJpVocabCard(item) {
-  if (!item || !item.word || !item.meaning || item.meaning === "待解析") return;
+  if (!item || !item.word) return;
   const id = `jp-vocab-custom-${normalizeJapaneseWord(item.word)}`;
-  if (state.customCards.some((card) => card.id === id)) return;
+  state.customCards = state.customCards.filter(function(c) { return c.id !== id; });
+  if (!item.meaning || item.meaning === "待解析") {
+    state.customCards.push({
+      id,
+      track: "japanese",
+      module: "jp-vocab",
+      type: "self-assessment",
+      word: item.word,
+      prompt: `你记得「${item.word}」的意思吗？`,
+      answer: "请在生词本中补充释义后再练习",
+      speak: item.word,
+      context: item.sentence ? { title: "收藏语境", body: [item.sentence], translation: "", notes: ["待解析 — 请点击生词本中的「补充释义」按钮"] } : undefined,
+      explanation: "这个词还没有释义，请在生词本中补充。",
+      tags: ["vocab", "custom", "japanese", "reading-lab", "pending"]
+    });
+    return;
+  }
   state.customCards.push({
     id,
     track: "japanese",
@@ -6433,6 +6572,39 @@ function markJpVocab(word, status) {
   saveState();
   render();
   scheduleCloudSync();
+}
+
+async function enrichVocabFromAi(word, sentence) {
+  var item = findJpVocab(word);
+  if (!item) { showToast("找不到该词"); return; }
+  if (!deepseekKeyAvailable()) { showToast("请先设置 DeepSeek API key"); return; }
+  showToast("AI 解析中…");
+  try {
+    var prompt = sentence
+      ? "请解析日语词「" + word + "」在以下语境中的意思：\n" + sentence + "\n\n请用 JSON 返回：{\"reading\":\"假名\",\"meaning\":\"中文释义(简短)\"}"
+      : "请解析日语词「" + word + "」的最常用含义。\n请用 JSON 返回：{\"reading\":\"假名\",\"meaning\":\"中文释义(简短)\"}";
+    var raw = await callDeepSeekDirect("你是简洁的日语词典。只返回 JSON，不要其他内容。", prompt, 0.2);
+    raw = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    var parsed = extractJsonFromText(raw);
+    if (parsed && parsed.meaning) {
+      item.reading = parsed.reading || item.reading || "";
+      item.meaning = parsed.meaning;
+      item.updatedAt = new Date().toISOString();
+      var vb = (state.vocabBank || []).find(function(v) {
+        return v.track === "japanese" && normalizeJapaneseWord(v.word) === normalizeJapaneseWord(word);
+      });
+      if (vb) { vb.reading = item.reading; vb.meaning = item.meaning; vb.updatedAt = item.updatedAt; }
+      var cardId = "jp-vocab-custom-" + normalizeJapaneseWord(word);
+      state.customCards = state.customCards.filter(function(c) { return c.id !== cardId; });
+      maybeCreateJpVocabCard(item);
+      saveState(); render(); scheduleCloudSync();
+      showToast("AI 解析完成：" + item.meaning);
+    } else {
+      showToast("AI 返回格式异常，请手动补充");
+    }
+  } catch (e) {
+    showToast("AI 解析失败：" + (e.message || e));
+  }
 }
 
 function handleDailySubmit(event) {
@@ -7109,29 +7281,41 @@ function renderVocabPanel() {
 }
 
 function renderJapaneseVocabPanel() {
-  // 优先从 vocabBank 读取日语生词，回退到旧 jpVocab
-  const vbWords = (state.vocabBank || []).filter(function(item) { return item.track === "japanese"; });
-  const words = vbWords.length ? vbWords.slice(-10).reverse() : (state.jpVocab || []).slice(-10).reverse();
+  var vbWords = (state.vocabBank || []).filter(function(item) { return item.track === "japanese"; });
+  var allWords = vbWords.length ? vbWords.slice().reverse() : (state.jpVocab || []).slice().reverse();
+  var pendingCount = allWords.filter(function(w) { return !w.meaning || w.meaning === "待解析"; }).length;
+  var words = allWords.slice(0, 20);
   return `
     <section class="custom-panel vocab-panel" data-view="practice">
-      <h3 class="panel-title">日语阅读生词</h3>
-      <p class="daily-meta">在阅读短文里点词即可收藏。标记「忘了」的词会进入下一篇 AI 短文提示。</p>
+      <h3 class="panel-title">日语阅读生词 <small>(${allWords.length} 词${pendingCount ? "，" + pendingCount + " 待解析" : ""})</small></h3>
+      <p class="daily-meta">在阅读短文里点词或选词即可收藏。点「补充释义」可手动添加或调用 AI 解析。</p>
       <ul class="jp-vocab-list">
         ${
           words.length
-            ? words.map((item) => `
-              <li>
+            ? words.map(function(item) {
+              var isPending = !item.meaning || item.meaning === "待解析";
+              var statusCls = item.status === "known" ? " status-known" : item.status === "forgot" ? " status-forgot" : "";
+              var sourceTag = item.source === "selected" || (item.tags && item.tags.indexOf("selected") >= 0) ? '<span class="vocab-source">选词</span>' : "";
+              return `
+              <li class="${isPending ? "vocab-pending" : ""}${statusCls}">
                 <div>
-                  <b>${escapeHtml(item.word)}</b>
-                  <span>${escapeHtml([item.reading, item.meaning].filter(Boolean).join(" · ") || "待解析")}</span>
+                  <b>${escapeHtml(item.word)}</b>${sourceTag}
+                  <span>${isPending ? '<em class="pending-label">待解析</em>' : escapeHtml([item.reading, item.meaning].filter(Boolean).join(" · "))}</span>
                 </div>
                 <div class="mini-actions">
-                  <button class="plain-button" data-action="vocab-mark" data-word="${escapeHtml(item.word)}" data-status="forgot">忘了</button>
-                  <button class="plain-button" data-action="vocab-mark" data-word="${escapeHtml(item.word)}" data-status="known">掌握</button>
+                  ${isPending ? `
+                    <button class="plain-button primary" data-action="vocab-edit" data-word="${escapeHtml(item.word)}">补充释义</button>
+                    <button class="plain-button" data-action="vocab-enrich" data-word="${escapeHtml(item.word)}" data-sentence="${escapeHtml(item.sentence || item.sourceSentence || "")}">AI解析</button>
+                  ` : `
+                    <button class="plain-button" data-action="vocab-mark" data-word="${escapeHtml(item.word)}" data-status="forgot">忘了</button>
+                    <button class="plain-button" data-action="vocab-mark" data-word="${escapeHtml(item.word)}" data-status="known">掌握</button>
+                    <button class="plain-button" data-action="vocab-edit" data-word="${escapeHtml(item.word)}">编辑</button>
+                  `}
+                  <button class="plain-button danger" data-action="vocab-delete" data-word="${escapeHtml(item.word)}">删除</button>
                 </div>
               </li>
-            `).join("")
-            : `<li><div><b>还没有收藏</b><span>去阅读短文里点词。</span></div></li>`
+            `; }).join("")
+            : `<li><div><b>还没有收藏</b><span>去阅读短文里点词或选词。</span></div></li>`
         }
       </ul>
     </section>

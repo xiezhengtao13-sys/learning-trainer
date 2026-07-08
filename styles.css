@@ -611,6 +611,11 @@ button {
   background: #eff8f2;
 }
 
+.word-chip.is-pending {
+  border-color: #e8a735;
+  background: #fef9ee;
+}
+
 .word-chip small {
   color: var(--muted);
 }
@@ -632,6 +637,37 @@ button {
   border-color: color-mix(in srgb, var(--green) 45%, var(--line));
   background: #eff8f2;
 }
+
+.selection-float-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 2px solid var(--track-color);
+  background: #fffbe6;
+  font-size: 0.85rem;
+  z-index: 20;
+}
+.selection-float-bar b { color: var(--track-color); }
+
+.vocab-pending { background: #fffbe6; }
+.status-known b { color: var(--green); }
+.status-forgot b { color: var(--red, #d32f2f); }
+.pending-label { color: #e8a735; font-style: italic; }
+.vocab-source {
+  display: inline-block;
+  padding: 1px 5px;
+  margin-left: 4px;
+  border-radius: 4px;
+  background: #e8f0fe;
+  color: #1a73e8;
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.plain-button.danger { color: var(--red, #d32f2f); }
 
 .reading-chat {
   display: grid;
@@ -928,9 +964,9 @@ button {
 }
 
 .mini-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .profile-advice {
