@@ -3240,7 +3240,7 @@ function allCards() {
   } else if (state.activeTask === "grammar" && state.activeTrack === "japanese") {
     dynamicCards = buildGrammarCardsFromBank();
   }
-  return [...cards, ...n1FoundationCards, ...japaneseReadingLabCards, ...state.customCards, ...state.generatedCards, ...dynamicCards];
+  return [...cards, ...japaneseReadingLabCards, ...state.customCards, ...state.generatedCards, ...dynamicCards];
 }
 
 function getTrack(id = state.activeTrack) {
@@ -3522,48 +3522,41 @@ function updateLessonProgressFromCard(card, rating) {
   japaneseSourceProfile.masteryEstimate = cls.mastery;
 }
 
-// P2: 改进的掌握度公式 — fuzzy/hard 部分加分、forgot/again 惩罚
 function boundedMastery(v) { return Math.max(0, Math.min(1, v || 0)); }
 
 function recalcLessonMastery(rec) {
   if (!rec) return;
   var vs = rec.vocab.known + rec.vocab.fuzzy + rec.vocab.forgot;
-  var vm = vs ? boundedMastery((rec.vocab.known + rec.vocab.fuzzy * 0.45 - rec.vocab.forgot * 0.35) / vs) : 0;
+  var vm = vs ? rec.vocab.known / vs : 0;
   rec.vocab.mastery = Math.round(vm * 100) / 100;
   var gs = rec.grammar.known + rec.grammar.fuzzy + rec.grammar.forgot;
-  var gm = gs ? boundedMastery((rec.grammar.known + rec.grammar.fuzzy * 0.40 - rec.grammar.forgot * 0.45) / gs) : 0;
+  var gm = gs ? rec.grammar.known / gs : 0;
   rec.grammar.mastery = Math.round(gm * 100) / 100;
   var rs = rec.reading.good + rec.reading.hard + rec.reading.again;
-  var rm = rs ? boundedMastery((rec.reading.good + rec.reading.hard * 0.55 - rec.reading.again * 0.35) / rs) : 0;
+  var rm = rs ? rec.reading.good / rs : 0;
   rec.reading.mastery = Math.round(rm * 100) / 100;
-  // retention 暂不用独立数据，权重转给阅读
-  rec.overall = boundedMastery(Math.round((vm * 0.40 + gm * 0.30 + rm * 0.30) * 100) / 100);
+  rec.overall = Math.round((vm * 0.50 + gm * 0.50) * 100) / 100;
 }
 
-// P2: 改进的推进条件 — 拆分 canPreview/canAdvance，检查 blockers，要求至少读过
 function maybeAdvanceLesson() {
   state.lessonProgress = state.lessonProgress || {};
   var cls = currentLessonState();
   var rec = cls.record;
   if (!rec || state.lessonProgress.advanceMode === "manual") return;
   var lesson = cls.lesson;
-  // blockers
   rec.blockers = [];
-  if (rec.vocab.mastery < 0.35) rec.blockers.push("词汇掌握不足(" + Math.round(rec.vocab.mastery * 100) + "%)");
-  if (rec.grammar.mastery < 0.30) rec.blockers.push("语法掌握不足(" + Math.round(rec.grammar.mastery * 100) + "%)");
-  if (rec.reading.mastery < 0.30) rec.blockers.push("阅读掌握不足(" + Math.round(rec.reading.mastery * 100) + "%)");
-  if (rec.reading.seen < 2) rec.blockers.push("阅读量不足(至少2篇)");
-  // canPreview: 掌握度 ≥ 50% 时可预览下一课
-  rec.canPreview = rec.overall >= 0.50;
-  // canAdvance: ≥ 65% + 无 blockers + 至少 2 篇阅读
-  rec.canAdvance = rec.overall >= 0.65 && rec.blockers.length === 0 && rec.reading.seen >= 2;
+  if (rec.vocab.mastery < 0.80) rec.blockers.push("词汇掌握不足(" + Math.round(rec.vocab.mastery * 100) + "% / 需80%)");
+  if (rec.grammar.mastery < 0.80) rec.blockers.push("语法掌握不足(" + Math.round(rec.grammar.mastery * 100) + "% / 需80%)");
+  rec.canPreview = rec.vocab.mastery >= 0.50 || rec.grammar.mastery >= 0.50;
+  rec.canAdvance = rec.vocab.mastery >= 0.80 && rec.grammar.mastery >= 0.80;
   if (rec.canAdvance && lesson < 50) {
     state.lessonProgress.currentLesson = lesson + 1;
     state.lessonProgress.previewLesson = lesson + 2;
     state.lessonProgress.lastAdvanceAt = new Date().toISOString();
-    state.lessonProgress.lastAdvanceReason = "总掌握度 " + Math.round(rec.overall * 100) + "% ≥ 65%，无障碍项，自动推进到第 " + (lesson + 1) + " 课";
+    state.lessonProgress.lastAdvanceReason = "词汇 " + Math.round(rec.vocab.mastery * 100) + "% + 语法 " + Math.round(rec.grammar.mastery * 100) + "% 均≥80%，推进到第 " + (lesson + 1) + " 课";
     rec.status = "completed";
     ensureLessonRecord(lesson + 1).status = "active";
+    state.lessonAdvanceNotice = "已推进到第 " + (lesson + 1) + " 课！可在设置中生成新课题目。";
   }
 }
 
@@ -3651,12 +3644,6 @@ function buildSmartQueue(pool, profile) {
   // 偏慢模块
   const slowSet = new Set(profile.slowModules || []);
   const slow = available.filter(function(card) { return slowSet.has(card.module); });
-  // N1 阶段焦点
-  const n1PhaseFocus = profile.n1Status
-    ? available
-        .filter(function(card) { return card.track === "japanese" && (profile.n1Status.phase.mix[n1ModuleCategory(card.module)] || 0) > 0; })
-        .sort(function(a, b) { return (profile.n1Status.phase.mix[n1ModuleCategory(b.module)] || 0) - (profile.n1Status.phase.mix[n1ModuleCategory(a.module)] || 0); })
-    : [];
   const remaining = shuffle(available);
   const slots = smartSlots(profile.sessionSize, profile.dailyLog, isJapanese, isEnglish, isLight);
 
@@ -3669,7 +3656,6 @@ function buildSmartQueue(pool, profile) {
   pushBucket(queue, weak, seen, slots.weak);
   if (isJapanese) {
     pushBucket(queue, dueGrammar, seen, slots.dueGrammar);
-    pushBucket(queue, n1PhaseFocus, seen, profile.n1Status ? Math.max(2, Math.round(profile.sessionSize * 0.12)) : 0);
   }
   pushBucket(queue, newContext, seen, slots.newContext);
   pushBucket(queue, remaining, seen, profile.sessionSize);
@@ -4778,7 +4764,7 @@ function minnaPromptContext() {
     "优先语法：" + p.priorityGrammar.join("、"),
     forgotWords.length ? "最近忘词：" + forgotWords.join("、") : "",
     forgotGrammar.length ? "最近忘记语法：" + forgotGrammar.join("、") : "",
-    "短文要求：主要使用第 1-" + cls.lesson + " 课已学词汇和句型，允许少量下一课 preview（必须标记），不要直接堆 N1 表达。"
+    "严格要求：只使用第 1-" + cls.lesson + " 课已学词汇和句型，允许少量下一课 preview（必须标记）。不要生成 N1/N2 难度内容，严格限制在课本范围内。"
   ].filter(Boolean).join("\n");
 }
 
@@ -4807,7 +4793,6 @@ function buildDeepSeekGeneratePrompt(body) {
   var count = body.count || 6;
   var isJapanese = body.track === "japanese" || state.activeTrack === "japanese";
   var minnaCtx = isJapanese ? minnaPromptContext() : "";
-  var n1Context = body.n1Context || n1PromptContext(body.track || state.activeTrack);
   // 从生词和语法银行获取上下文
   var recentVocab = (state.vocabBank || []).filter(function(item) {
     return item.track === (body.track || state.activeTrack) && (item.lapses || 0) > 0;
@@ -4816,27 +4801,44 @@ function buildDeepSeekGeneratePrompt(body) {
     return (item.lapses || 0) > 0;
   }).slice(-4).map(function(item) { return item.pattern; }) : [];
 
-  return "你是一个严谨的语言/哲学学习出题助手。请根据学习者的当前状态生成 " + count + " 道原创练习题，不要照抄任何教材或真题原文。\n\n" +
-    (n1Context ? "## 学习目标与教材进度\n" + n1Context + "\n\n" : "") +
+  var currentLesson = japaneseSourceProfile.currentLesson;
+  if (isJapanese) {
+    return "你是《大家的日语》第 " + currentLesson + " 课的出题教师。请为这一课生成一整套练习题，不要照抄教材原文。\n\n" +
+      "## 教材进度\n" + minnaCtx + "\n\n" +
+      (weakTags.length ? "薄弱标签：" + weakTags.join("、") + "\n" : "") +
+      (recentVocab.length ? "最近忘词：" + recentVocab.join("、") + "\n" : "") +
+      (recentGrammar.length ? "最近忘记语法：" + recentGrammar.join("、") + "\n" : "") +
+      "\n## 出题要求\n" +
+      "请生成以下三类题目，合计约 " + count + " 道：\n\n" +
+      "1. 短文阅读题（reading）：生成 5-10 篇原创短文，每篇 3-5 句。\n" +
+      "   - 主要使用第 " + currentLesson + " 课的新词和新语法，辅以第 1-" + (currentLesson - 1) + " 课已学内容\n" +
+      "   - 每句必须给 jp（原文）、kana（假名）、zh（中文）、grammar 数组、words 数组\n" +
+      "   - words 每项包含 text, reading, meaning, tags\n\n" +
+      "2. 单词题（vocab）：为第 " + currentLesson + " 课的每个新单词生成 1 道题。\n" +
+      "   - 题型：填空(input) / 选择释义(choice) / 写假名(input)\n" +
+      "   - 每道题必须给 explanation\n\n" +
+      "3. 语法题（grammar）：为第 " + currentLesson + " 课的每个新语法点生成 1-2 道题。\n" +
+      "   - 题型：填空(input) / 组句(arrange) / 选择正确用法(choice)\n" +
+      "   - 每道题必须给 explanation\n\n" +
+      "严格限制：不要出现超过第 " + (currentLesson + 1) + " 课的词汇和语法。不要生成 N1/N2 难度内容。\n" +
+      "choice 的 answer 必须是 options 中的一项；arrange 的 answer 是正确顺序 tokens 数组。\n" +
+      "字符串内部不要出现真实换行，需要换行就拆成数组多个元素。\n" +
+      "\n只输出一个 JSON 对象，不要任何额外文字或 Markdown 代码块，格式：\n" +
+      '{"cards":[{"module":"jp-reading","type":"reading","prompt":"阅读短文：标题","lesson":' + currentLesson + ',"level":"课本","summary":"本文练习...","sentences":[{"jp":"...","kana":"...","zh":"...","grammar":["语法点"],"words":[{"text":"単語","reading":"たんご","meaning":"单词","tags":["minna","lesson-' + currentLesson + '"]}]}]},{"module":"jp-vocab","type":"input","prompt":"「単語」的意思是？","lesson":' + currentLesson + ',"answer":"...","accepted":["..."],"explanation":"...","tags":["minna","vocab","lesson-' + currentLesson + '"]},{"module":"jp-grammar","type":"choice","prompt":"选择正确的助词：...","lesson":' + currentLesson + ',"options":["A","B","C","D"],"answer":"A","explanation":"...","tags":["minna","grammar","lesson-' + currentLesson + '"]}]}';
+  }
+  return "你是一个严谨的语言学习出题助手。请根据学习者的当前状态生成 " + count + " 道原创练习题，不要照抄任何教材或真题原文。\n\n" +
     "科目：" + trackName + "\n" +
     "薄弱标签：" + (weakTags.join("、") || "（从答题数据自动推断）") + "\n" +
     (recentVocab.length ? "最近忘词：" + recentVocab.join("、") + "\n" : "") +
-    (recentGrammar.length ? "最近忘记语法：" + recentGrammar.join("、") + "\n" : "") +
     "\n要求：\n" +
-    "- " + (isJapanese
-      ? "日语题优先围绕《大家的日语》第" + japaneseSourceProfile.currentLesson + "课及前置课生成：基础变形、助词、句型接续、短文阅读。不要直接堆 N1 过难题。"
-      : "英语题围绕词汇在语境中的使用，优先复现忘记的词。") + "\n" +
-    "- " + (isJapanese
-      ? "优先生成 reading 类型短文卡：3-5句原创短文，每句带 jp/kana/zh/grammar/words。"
-      : "英语 reading 类型短文卡：2-4句，带原文/中文/关键词。") + "\n" +
+    "- 英语题围绕词汇在语境中的使用，优先复现忘记的词。\n" +
+    "- 英语 reading 类型短文卡：2-4句，带原文/中文/关键词。\n" +
     "- 多用填空(input)、组句(arrange)、自评(self)，少用纯选择(choice)。\n" +
     "- 每题给一句简短中文解释。\n" +
     "- choice 的 answer 必须是 options 中的一项；arrange 的 answer 是正确顺序 tokens 数组。\n" +
     "- 字符串内部不要出现真实换行，需要换行就拆成数组多个元素。\n" +
     "\n只输出一个 JSON 对象，不要任何额外文字或 Markdown 代码块，格式：\n" +
-    (isJapanese
-      ? '{"cards":[{"module":"jp-reading","type":"reading","prompt":"阅读短文：...","level":"N4 → N3","summary":"...","sentences":[{"jp":"...","kana":"...","zh":"...","grammar":["..."],"words":[{"text":"...","reading":"...","meaning":"...","tags":["minna"]}]}]},{"module":"jp-vocab","type":"input","prompt":"...","answer":"...","accepted":["..."],"explanation":"...","tags":["minna","vocab"]},{"module":"jp-grammar","type":"choice","prompt":"...","options":["A","B","C","D"],"answer":"A","explanation":"...","tags":["minna","grammar"]}]}'
-      : '{"cards":[{"module":"en-reading","type":"reading","prompt":"阅读短文：...","summary":"...","sentences":[{"text":"...","reading":"...","translation":"...","words":[{"text":"...","meaning":"...","tags":["academic"]}]}]},{"module":"en-vocab","type":"input","prompt":"...","answer":"...","accepted":["..."],"explanation":"...","tags":["vocab","english"]}]}');
+    '{"cards":[{"module":"en-reading","type":"reading","prompt":"阅读短文：...","summary":"...","sentences":[{"text":"...","reading":"...","translation":"...","words":[{"text":"...","meaning":"...","tags":["academic"]}]}]},{"module":"en-vocab","type":"input","prompt":"...","answer":"...","accepted":["..."],"explanation":"...","tags":["vocab","english"]}]}';
 }
 
 function buildDeepSeekDiagnosisPrompt(body) {
@@ -4844,7 +4846,6 @@ function buildDeepSeekDiagnosisPrompt(body) {
   var profile = body.profile || {};
   var recentErrors = body.recentErrors || [];
   var dailyLogs = body.dailyLogs || [];
-  var n1Context = body.n1Context || n1PromptContext(body.track || state.activeTrack);
   var errorDetails = recentErrors.map(function(e) {
     return "[" + ((e.tags || []).join(",") || "") + "] Q:" + String(e.prompt || "").slice(0, 80)
       + " | 正解:" + String(e.answer || "").slice(0, 40)
@@ -4859,9 +4860,10 @@ function buildDeepSeekDiagnosisPrompt(body) {
       + ", 到期" + r.due + "张"
       + (r.avgMs ? ", 均速" + (r.avgMs / 1000).toFixed(1) + "秒" : "");
   }).join("\n");
-  return `你是经验丰富的日语学习诊断教练。请分析以下${trackName}学习数据，输出个性化诊断。
+  var minnaCtx = minnaPromptContext();
+  return `你是经验丰富的日语学习诊断教练。请分析以下${trackName}学习数据，输出个性化诊断。严格围绕《大家的日语》课本内容，不要涉及 N1/N2 难度。
 
-${n1Context ? "## N1年度目标\n" + n1Context + "\n" : ""}
+${minnaCtx ? "## 教材进度\n" + minnaCtx + "\n" : ""}
 ## 学习档案
 - 错因归类：${(profile.errorReasons || []).map(function(r) { return r.label + "(" + r.count + "次)"; }).join("、") || "暂无"}
 - 细粒度弱点：${(profile.tagReasons || []).map(function(r) { return r.label + "(" + r.count + "次)"; }).join("、") || "暂无"}
@@ -4879,7 +4881,7 @@ ${logSummaries || "暂无日志"}
 请只输出 JSON：
 {
   "diagnosis": {
-    "summary": "用2-4句话总结当前离N1目标最近的瓶颈",
+    "summary": "用2-4句话总结当前课本学习的主要瓶颈",
     "patterns": [
       {"category": "弱点类别名", "detail": "具体错误模式、根因、下一步", "cards": ["相关卡片id"]}
     ],
@@ -4888,7 +4890,7 @@ ${logSummaries || "暂无日志"}
       "可执行建议2"
     ],
     "focusCards": [
-      {"module":"jp-grammar","type":"choice|input|arrange|self","prompt":"针对弱点的原创练习题","options":["choice需要"],"answer":"正确答案","explanation":"解释","tokens":["arrange需要"],"accepted":["input需要"],"tags":["n1"]}
+      {"module":"jp-grammar","type":"choice|input|arrange|self","prompt":"针对弱点的原创练习题","options":["choice需要"],"answer":"正确答案","explanation":"解释","tokens":["arrange需要"],"accepted":["input需要"],"tags":["minna"]}
     ]
   }
 }
@@ -4896,7 +4898,7 @@ ${logSummaries || "暂无日志"}
 规则：
 - patterns 2-4个，必须具体到助词、变形、接续、长句切分、听解反应或输出复述。
 - recommendations 2-4条，每条都要能今天执行。
-- focusCards 3-6道，优先填空、组句、读解和输出复述，难度要从当前基础向N1过渡。
+- focusCards 3-6道，优先填空、组句、读解和复述，难度严格限制在课本范围内。
 - 只输出 JSON，不要 Markdown。`;
 }
 
@@ -4953,7 +4955,7 @@ function readingLearningPayload() {
 function buildReadingChatPrompt(card, question) {
   const payload = readingPayload(card);
   const learning = readingLearningPayload();
-  return `你是我的日语阅读教练。我正在用“阅读短文 + 逐句解析 + 收藏生词”的方式准备JLPT N1，但当前基础仍在初级到中级过渡。
+  return `你是我的日语阅读教练。我正在用”阅读短文 + 逐句解析 + 收藏生词”的方式学习《大家的日语》，当前基础在初级阶段。
 
 请根据我的问题回答，必须贴合当前短文，不要泛泛讲课。
 
@@ -4981,7 +4983,7 @@ function buildReadingPassagePrompt() {
     "## 我的知识边界\n" + JSON.stringify(learning, null, 2) + "\n\n" +
     "要求：\n" +
     "- **必须主要使用《大家的日语》第 1-" + japaneseSourceProfile.currentLesson + " 课已学词汇和句型。**\n" +
-    "- 难度略高于当前水平但不突然过难。每篇只引入 0-1 个 preview 词汇（标记 preview 标签）。\n" +
+    "- 难度严格限制在课本范围内。每篇只引入 0-1 个 preview 词汇（标记 preview 标签）。不要使用 N1/N2 难度的表达。\n" +
     "- 优先复现我标记忘记的词、忘记的语法点。\n" +
     "- 3-5句，每句自然、短而清楚。\n" +
     "- 每句必须给 jp（原文）、kana（假名）、zh（中文）、grammar 数组、words 数组。\n" +
@@ -7004,15 +7006,14 @@ async function handleDiagnose() {
     weakTags: profile.weakTags,
     slowModuleNames: profile.slowModuleNames,
     moduleRows: profile.moduleRows.map(function(r) { return { name: r.name, accuracy: r.accuracy, due: r.due, avgMs: r.avgMs }; }),
-    advice: profile.advice,
-    n1Status: profile.n1Status ? { week: profile.n1Status.week, remainingWeeks: profile.n1Status.remainingWeeks, phase: profile.n1Status.phase.title } : null
+    advice: profile.advice
   };
 
   // DeepSeek 直连优先
   if (deepseekKeyAvailable()) {
     state.aiMessage = "正在通过 DeepSeek API 直连诊断…"; saveState();
     try {
-      var dData = await callDeepSeekDiagnose({ track: trackId, trackName: track.name, profile: profilePayload, recentErrors: recentErrors, dailyLogs: dailyLogs, n1Context: n1PromptContext(trackId) });
+      var dData = await callDeepSeekDiagnose({ track: trackId, trackName: track.name, profile: profilePayload, recentErrors: recentErrors, dailyLogs: dailyLogs });
       var diag = dData.diagnosis || {};
       var focusCards = Array.isArray(diag.focusCards) ? diag.focusCards : [];
 
@@ -7050,7 +7051,7 @@ async function handleDiagnose() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         provider: state.aiProvider || "deepseek", track: trackId, trackName: track.name,
-        profile: profilePayload, recentErrors: recentErrors, dailyLogs: dailyLogs, n1Context: n1PromptContext(trackId)
+        profile: profilePayload, recentErrors: recentErrors, dailyLogs: dailyLogs
       })
     });
     if (!res.ok) { var errText = await res.text(); throw new Error("代理返回 " + res.status + "：" + errText.slice(0, 200)); }
@@ -7188,8 +7189,7 @@ async function generateAiCards() {
       var parsed = await callDeepSeekGenerate({
         track: state.activeTrack,
         trackName: track.name,
-        weakTags: profile.weakTags, count: 6,
-        n1Context: n1PromptContext(state.activeTrack)
+        weakTags: profile.weakTags, count: 20
       });
       var incoming = Array.isArray(parsed.cards) ? parsed.cards : [];
       var cards = incoming.map(function(c, i) { return normalizeAiCard(c, aiSource, i); }).filter(Boolean);
@@ -7217,8 +7217,7 @@ async function generateAiCards() {
       body: JSON.stringify({
         provider: state.aiProvider || "deepseek", track: state.activeTrack,
         trackName: track.name,
-        weakTags: profile.weakTags, count: 6,
-        n1Context: n1PromptContext(state.activeTrack)
+        weakTags: profile.weakTags, count: 20
       })
     });
     if (!resp.ok) throw new Error("代理返回 " + resp.status);
