@@ -926,3 +926,20 @@
 
 ### 下一步建议
 - 手机浏览器打开验证：底部3栏均匀分布、任务标签可横滑、词块足够大、评分条悬浮在标签栏上方
+
+---
+
+## 2026-07-07 当日工作总结
+
+### 完成内容
+- **第 23 次修改**：默认字段修复（canPreview/canAdvance Boolean 兜底）+ 真正 reading AI 卡测试 + findJpVocabIn 纯函数抽出并补 4 个 fixture 测试
+- **第 24 次修改**：手机端适配（Tabbar 3 列、view 过滤清理、card-footer 定位修复、词块/语法芯触控 44px、阅读句子字号微调、overview 2 列布局）
+- **代码推送**：全部改动 commit & push 到 GitHub Pages 主分支
+- **同步排查**：确认自动同步机制正常（pull-merge-push，2.5s 防抖）；发现手机端 Gist ID 为 `bfff6c1fae36…`，与电脑端 `3a4f05e15fb…` 不同
+- **最终决定**：保留两个独立 Gist 各自存档，互不干扰，均在云端安全存储
+
+### 当前状态
+- 电脑端：Gist `3a4f05e15fb…`，自动同步正常
+- 手机端：Gist `bfff6c1fae36…`，自动同步正常（新 token 已配置）
+- 两端独立运行，互为备份
+- 测试：23 passed, 0 failed
