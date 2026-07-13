@@ -17,7 +17,14 @@ const {
   findJpVocab,
   findJpVocabIn,
   normalizeReadingCard,
-  normalizeJapaneseWord
+  normalizeJapaneseWord,
+  vocabCatalog,
+  grammarCatalog,
+  pickDistractors,
+  buildVocabCardsFromCatalog,
+  buildGrammarCardsFromBank,
+  lessonGateOk,
+  japaneseReadingLabCards
 } = require("./app.js");
 
 let passed = 0;
@@ -134,20 +141,34 @@ test("boundedMastery 夹紧到 [0,1]", () => {
   assert.strictEqual(boundedMastery(1), 1);
 });
 
-test("recalcLessonMastery good 提高阅读掌握度", () => {
+test("recalcLessonMastery known/total 比例计算", () => {
   const rec = {
-    vocab: { known: 5, fuzzy: 2, forgot: 1, mastery: 0 },
-    grammar: { known: 3, fuzzy: 1, forgot: 1, mastery: 0 },
+    vocab: { known: 8, fuzzy: 1, forgot: 1, mastery: 0 },
+    grammar: { known: 8, fuzzy: 1, forgot: 1, mastery: 0 },
     reading: { good: 4, hard: 1, again: 0, mastery: 0 },
     retention: { due: 0, overdue: 0, stable: 0, mastery: 0 }
   };
   recalcLessonMastery(rec);
-  assert.ok(rec.reading.mastery > 0.5, "4 good + 1 hard 应给出 >0.5 的 mastery");
-  assert.ok(rec.overall > 0, "overall 应大于 0");
-  assert.ok(rec.overall <= 1, "overall 应 ≤ 1");
+  assert.strictEqual(rec.vocab.mastery, 0.8, "8/10 known → 0.80");
+  assert.strictEqual(rec.grammar.mastery, 0.8, "8/10 known → 0.80");
+  assert.strictEqual(rec.reading.mastery, 0.8, "4/5 good → 0.80");
+  assert.strictEqual(rec.overall, 0.8, "vocab 0.8 * 0.5 + grammar 0.8 * 0.5 = 0.8");
 });
 
-test("recalcLessonMastery again 惩罚降低掌握度", () => {
+test("recalcLessonMastery fuzzy 不加分", () => {
+  const rec = {
+    vocab: { known: 0, fuzzy: 10, forgot: 0, mastery: 0 },
+    grammar: { known: 0, fuzzy: 10, forgot: 0, mastery: 0 },
+    reading: { good: 0, hard: 10, again: 0, mastery: 0 },
+    retention: { due: 0, overdue: 0, stable: 0, mastery: 0 }
+  };
+  recalcLessonMastery(rec);
+  assert.strictEqual(rec.vocab.mastery, 0, "全 fuzzy → mastery = 0");
+  assert.strictEqual(rec.grammar.mastery, 0, "全 fuzzy → mastery = 0");
+  assert.strictEqual(rec.overall, 0, "全 fuzzy → overall = 0");
+});
+
+test("recalcLessonMastery 全 forgot 给 0", () => {
   const recBad = {
     vocab: { known: 0, fuzzy: 0, forgot: 5, mastery: 0 },
     grammar: { known: 0, fuzzy: 0, forgot: 3, mastery: 0 },
@@ -155,7 +176,33 @@ test("recalcLessonMastery again 惩罚降低掌握度", () => {
     retention: { due: 0, overdue: 0, stable: 0, mastery: 0 }
   };
   recalcLessonMastery(recBad);
-  assert.ok(recBad.overall < 0.3, "全 forgot/again 应给出低 mastery");
+  assert.strictEqual(recBad.overall, 0, "全 forgot → overall = 0");
+});
+
+test("maybeAdvanceLesson vocab+grammar 均≥80% 才推进", () => {
+  const rec80 = {
+    vocab: { known: 8, fuzzy: 1, forgot: 1, mastery: 0 },
+    grammar: { known: 8, fuzzy: 1, forgot: 1, mastery: 0 },
+    reading: { good: 1, hard: 0, again: 0, mastery: 0 },
+    retention: { due: 0, overdue: 0, stable: 0, mastery: 0 },
+    blockers: [], canPreview: false, canAdvance: false
+  };
+  recalcLessonMastery(rec80);
+  assert.ok(rec80.vocab.mastery >= 0.80, "vocab 应 ≥ 0.80");
+  assert.ok(rec80.grammar.mastery >= 0.80, "grammar 应 ≥ 0.80");
+});
+
+test("maybeAdvanceLesson vocab<80% 不推进", () => {
+  const rec79 = {
+    vocab: { known: 7, fuzzy: 2, forgot: 1, mastery: 0 },
+    grammar: { known: 9, fuzzy: 0, forgot: 1, mastery: 0 },
+    reading: { good: 5, hard: 0, again: 0, mastery: 0 },
+    retention: { due: 0, overdue: 0, stable: 0, mastery: 0 },
+    blockers: [], canPreview: false, canAdvance: false
+  };
+  recalcLessonMastery(rec79);
+  assert.ok(rec79.vocab.mastery < 0.80, "vocab 7/10=0.70 应 < 0.80");
+  assert.ok(rec79.grammar.mastery >= 0.80, "grammar 9/10=0.90 应 ≥ 0.80");
 });
 
 test("normalizeAiCard 生成普通卡带 lesson", () => {
@@ -265,6 +312,77 @@ test("findJpVocabIn 都不存在返回 null", () => {
 test("findJpVocabIn 处理空参数", () => {
   assert.strictEqual(findJpVocabIn(undefined, undefined, "何か"), null);
   assert.doesNotThrow(function() { findJpVocabIn(null, null, ""); });
+});
+
+test("词汇目录：覆盖 1-16 全部课次且字段完整", () => {
+  assert.ok(vocabCatalog.length >= 500, `词汇量应 >= 500，实际 ${vocabCatalog.length}`);
+  const lessons = new Set(vocabCatalog.map((w) => w.lesson));
+  for (let l = 1; l <= 16; l += 1) assert.ok(lessons.has(l), `缺少第 ${l} 课词汇`);
+  vocabCatalog.forEach((w) => {
+    assert.ok(w.word && w.reading && w.meaning, `词条字段不完整: ${JSON.stringify(w)}`);
+    assert.ok(w.lesson >= 1 && w.lesson <= 16, `课次越界: ${w.word}`);
+  });
+});
+
+test("语法目录：覆盖 1-16 全部课次且带例句", () => {
+  assert.ok(grammarCatalog.length >= 60, `语法条数应 >= 60，实际 ${grammarCatalog.length}`);
+  const lessons = new Set(grammarCatalog.map((g) => g.lesson));
+  for (let l = 1; l <= 16; l += 1) assert.ok(lessons.has(l), `缺少第 ${l} 课语法`);
+  grammarCatalog.forEach((g) => {
+    assert.ok(g.pattern && g.meaning && g.connection, `语法字段不完整: ${g.pattern}`);
+    assert.ok(g.example && g.exampleZh, `语法缺例句: ${g.pattern}`);
+  });
+});
+
+test("阅读目录：短文覆盖全部课次且句子结构完整", () => {
+  assert.ok(japaneseReadingLabCards.length >= 15, `短文数应 >= 15，实际 ${japaneseReadingLabCards.length}`);
+  const lessons = new Set(japaneseReadingLabCards.map((c) => c.lesson));
+  for (let l = 1; l <= 16; l += 1) assert.ok(lessons.has(l), `缺少第 ${l} 课短文`);
+  japaneseReadingLabCards.forEach((card) => {
+    assert.strictEqual(card.type, "reading");
+    assert.ok(card.sentences.length >= 3, `短文句子太少: ${card.prompt}`);
+    card.sentences.forEach((s) => {
+      assert.ok(s.jp && s.kana && s.zh, `句子字段不完整: ${card.prompt}`);
+      assert.ok(Array.isArray(s.grammar) && Array.isArray(s.words), `句子缺 grammar/words: ${card.prompt}`);
+    });
+  });
+});
+
+test("pickDistractors 确定性且不含正确项", () => {
+  const pool = vocabCatalog.slice(0, 50).map((item) => ({ item }));
+  const a = pickDistractors(pool, 3, 3, (p) => p.item.meaning);
+  const b = pickDistractors(pool, 3, 3, (p) => p.item.meaning);
+  assert.deepStrictEqual(a, b, "同样输入应产生同样干扰项");
+  assert.strictEqual(a.length, 3);
+  assert.ok(!a.includes(pool[3].item.meaning), "干扰项不应包含正确答案");
+  assert.strictEqual(new Set(a).size, 3, "干扰项不应重复");
+});
+
+test("词汇出题器：题目 id 唯一、选项含正确答案", () => {
+  const cards = buildVocabCardsFromCatalog();
+  assert.ok(cards.length >= 1000, `词汇题应 >= 1000，实际 ${cards.length}`);
+  const ids = new Set(cards.map((c) => c.id));
+  assert.strictEqual(ids.size, cards.length, "题目 id 不应重复");
+  cards.filter((c) => c.type === "choice").forEach((c) => {
+    assert.ok(c.options.includes(c.answer), `选项缺正确答案: ${c.prompt}`);
+    assert.strictEqual(new Set(c.options).size, c.options.length, `选项重复: ${c.prompt}`);
+  });
+});
+
+test("语法出题器：三种题型、id 唯一", () => {
+  const cards = buildGrammarCardsFromBank();
+  assert.ok(cards.length >= 150, `语法题应 >= 150，实际 ${cards.length}`);
+  const ids = new Set(cards.map((c) => c.id));
+  assert.strictEqual(ids.size, cards.length, "题目 id 不应重复");
+  const suffixes = new Set(cards.map((c) => c.id.slice(c.id.lastIndexOf("-"))));
+  assert.ok(suffixes.has("-m") && suffixes.has("-c") && suffixes.has("-e"), "应包含意思/接续/例句三种题型");
+});
+
+test("lessonGateOk：超过当前课的卡不进题库", () => {
+  assert.strictEqual(lessonGateOk(1), true, "第 1 课应可用");
+  assert.strictEqual(lessonGateOk(16), true, "当前课应可用");
+  assert.strictEqual(lessonGateOk(30), false, "远超进度的课不应可用");
+  assert.strictEqual(lessonGateOk(undefined), true, "无课次限制的卡应可用");
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
