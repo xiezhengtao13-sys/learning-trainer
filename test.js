@@ -17,7 +17,14 @@ const {
   findJpVocab,
   findJpVocabIn,
   normalizeReadingCard,
-  normalizeJapaneseWord
+  normalizeJapaneseWord,
+  vocabCatalog,
+  grammarCatalog,
+  pickDistractors,
+  buildVocabCardsFromCatalog,
+  buildGrammarCardsFromBank,
+  lessonGateOk,
+  japaneseReadingLabCards
 } = require("./app.js");
 
 let passed = 0;
@@ -305,6 +312,77 @@ test("findJpVocabIn 都不存在返回 null", () => {
 test("findJpVocabIn 处理空参数", () => {
   assert.strictEqual(findJpVocabIn(undefined, undefined, "何か"), null);
   assert.doesNotThrow(function() { findJpVocabIn(null, null, ""); });
+});
+
+test("词汇目录：覆盖 1-16 全部课次且字段完整", () => {
+  assert.ok(vocabCatalog.length >= 500, `词汇量应 >= 500，实际 ${vocabCatalog.length}`);
+  const lessons = new Set(vocabCatalog.map((w) => w.lesson));
+  for (let l = 1; l <= 16; l += 1) assert.ok(lessons.has(l), `缺少第 ${l} 课词汇`);
+  vocabCatalog.forEach((w) => {
+    assert.ok(w.word && w.reading && w.meaning, `词条字段不完整: ${JSON.stringify(w)}`);
+    assert.ok(w.lesson >= 1 && w.lesson <= 16, `课次越界: ${w.word}`);
+  });
+});
+
+test("语法目录：覆盖 1-16 全部课次且带例句", () => {
+  assert.ok(grammarCatalog.length >= 60, `语法条数应 >= 60，实际 ${grammarCatalog.length}`);
+  const lessons = new Set(grammarCatalog.map((g) => g.lesson));
+  for (let l = 1; l <= 16; l += 1) assert.ok(lessons.has(l), `缺少第 ${l} 课语法`);
+  grammarCatalog.forEach((g) => {
+    assert.ok(g.pattern && g.meaning && g.connection, `语法字段不完整: ${g.pattern}`);
+    assert.ok(g.example && g.exampleZh, `语法缺例句: ${g.pattern}`);
+  });
+});
+
+test("阅读目录：短文覆盖全部课次且句子结构完整", () => {
+  assert.ok(japaneseReadingLabCards.length >= 15, `短文数应 >= 15，实际 ${japaneseReadingLabCards.length}`);
+  const lessons = new Set(japaneseReadingLabCards.map((c) => c.lesson));
+  for (let l = 1; l <= 16; l += 1) assert.ok(lessons.has(l), `缺少第 ${l} 课短文`);
+  japaneseReadingLabCards.forEach((card) => {
+    assert.strictEqual(card.type, "reading");
+    assert.ok(card.sentences.length >= 3, `短文句子太少: ${card.prompt}`);
+    card.sentences.forEach((s) => {
+      assert.ok(s.jp && s.kana && s.zh, `句子字段不完整: ${card.prompt}`);
+      assert.ok(Array.isArray(s.grammar) && Array.isArray(s.words), `句子缺 grammar/words: ${card.prompt}`);
+    });
+  });
+});
+
+test("pickDistractors 确定性且不含正确项", () => {
+  const pool = vocabCatalog.slice(0, 50).map((item) => ({ item }));
+  const a = pickDistractors(pool, 3, 3, (p) => p.item.meaning);
+  const b = pickDistractors(pool, 3, 3, (p) => p.item.meaning);
+  assert.deepStrictEqual(a, b, "同样输入应产生同样干扰项");
+  assert.strictEqual(a.length, 3);
+  assert.ok(!a.includes(pool[3].item.meaning), "干扰项不应包含正确答案");
+  assert.strictEqual(new Set(a).size, 3, "干扰项不应重复");
+});
+
+test("词汇出题器：题目 id 唯一、选项含正确答案", () => {
+  const cards = buildVocabCardsFromCatalog();
+  assert.ok(cards.length >= 1000, `词汇题应 >= 1000，实际 ${cards.length}`);
+  const ids = new Set(cards.map((c) => c.id));
+  assert.strictEqual(ids.size, cards.length, "题目 id 不应重复");
+  cards.filter((c) => c.type === "choice").forEach((c) => {
+    assert.ok(c.options.includes(c.answer), `选项缺正确答案: ${c.prompt}`);
+    assert.strictEqual(new Set(c.options).size, c.options.length, `选项重复: ${c.prompt}`);
+  });
+});
+
+test("语法出题器：三种题型、id 唯一", () => {
+  const cards = buildGrammarCardsFromBank();
+  assert.ok(cards.length >= 150, `语法题应 >= 150，实际 ${cards.length}`);
+  const ids = new Set(cards.map((c) => c.id));
+  assert.strictEqual(ids.size, cards.length, "题目 id 不应重复");
+  const suffixes = new Set(cards.map((c) => c.id.slice(c.id.lastIndexOf("-"))));
+  assert.ok(suffixes.has("-m") && suffixes.has("-c") && suffixes.has("-e"), "应包含意思/接续/例句三种题型");
+});
+
+test("lessonGateOk：超过当前课的卡不进题库", () => {
+  assert.strictEqual(lessonGateOk(1), true, "第 1 课应可用");
+  assert.strictEqual(lessonGateOk(16), true, "当前课应可用");
+  assert.strictEqual(lessonGateOk(30), false, "远超进度的课不应可用");
+  assert.strictEqual(lessonGateOk(undefined), true, "无课次限制的卡应可用");
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

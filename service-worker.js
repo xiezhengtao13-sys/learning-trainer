@@ -1,9 +1,10 @@
-const CACHE_NAME = "triad-learning-trainer-v8";
+const CACHE_NAME = "triad-learning-trainer-v9";
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./data/minna-lessons.js",
   "./manifest.webmanifest",
   "./icon.svg",
   "./apple-touch-icon.png"

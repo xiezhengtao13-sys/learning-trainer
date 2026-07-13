@@ -71,9 +71,21 @@ const japaneseSourceProfile = {
   priorityGrammar: ["te-form", "nai-form", "plain-form", "particle", "giving-receiving", "permission", "ongoing", "conjunction"]
 };
 
+// 《大家的日语》1-16 课完整数据（词汇/语法/分课短文），来自 data/minna-lessons.js
+const MINNA_DATA = (function () {
+  if (typeof MINNA_LESSONS !== "undefined") return MINNA_LESSONS;
+  if (typeof require === "function" && typeof module !== "undefined") {
+    try { return require("./data/minna-lessons.js"); } catch (e) { /* Node 下缺文件时回退 */ }
+  }
+  return { vocab: [], grammar: [], readings: [] };
+})();
+
+// 词汇目录：1-16 课全部词条（word/reading/meaning/lesson/partOfSpeech/tags）
+const vocabCatalog = MINNA_DATA.vocab || [];
+
 // 《大家的日语》第 1-16 课完整语法目录
 // grammarBank 只保存用户标记"模糊/不会"的弱项；语法题主来源从此目录穷举
-const grammarCatalog = [
+const grammarCatalogFallback = [
   { pattern: "Vてください", meaning: "请做某事", connection: "动词て形 + ください", lesson: 14, level: "N5", tags: ["minna", "lesson-14", "te-form", "request"] },
   { pattern: "Vています", meaning: "正在进行/状态", connection: "动词て形 + います", lesson: 15, level: "N5", tags: ["minna", "lesson-15", "te-form", "ongoing"] },
   { pattern: "Vてもいいですか", meaning: "可以做某事吗", connection: "动词て形 + もいいですか", lesson: 15, level: "N5", tags: ["minna", "lesson-15", "te-form", "permission"] },
@@ -100,6 +112,9 @@ const grammarCatalog = [
   { pattern: "〜中で N が いちばん Adj です", meaning: "在……之中N最……", connection: "〜中で N が いちばん Adj です", lesson: 12, level: "N5", tags: ["minna", "lesson-12", "superlative"] },
   { pattern: "もう Vました / まだ Vていません", meaning: "已经做了/还没做", connection: "もう + た形 / まだ + ていません", lesson: 7, level: "N5", tags: ["minna", "lesson-7", "aspect"] }
 ];
+
+// 优先使用完整目录（80 条覆盖 1-16 课），数据文件缺失时回退到内置精简版
+const grammarCatalog = (MINNA_DATA.grammar && MINNA_DATA.grammar.length) ? MINNA_DATA.grammar : grammarCatalogFallback;
 
 const commuteSegments = [
   {
@@ -2798,146 +2813,47 @@ const n1FoundationCards = [
   }
 ];
 
-const japaneseReadingLabCards = [
-  {
-    id: "jp-reading-lab-001",
+// 阅读卡：由 1-16 课分课短文目录生成（原创短文，课次对齐）。
+// 若本地存在教材原文（data/minna/minna-readings.local.json，已被 .gitignore 排除），
+// 启动时会追加为 source="textbook" 的阅读卡并在排队时优先。
+function buildLessonReadingCard(item, index, source) {
+  var lesson = Number(item.lesson) || 0;
+  return {
+    id: "jp-reading-minna-" + (source === "textbook" ? "tb-" : "") + lesson + "-" + index,
     track: "japanese",
     module: "jp-reading",
     type: "reading",
-    prompt: "阅读短文：学习计划的调整",
-    level: "N4 → N3",
-    source: "builtin",
-    tags: ["reading-lab", "n1-bridge", "planning", "grammar"],
-    summary: "围绕学习计划、调整和习惯建立基础读解节奏。",
-    sentences: [
-      {
-        jp: "毎日少しずつ勉強しているつもりでも、同じ問題を何度も間違えることがあります。",
-        kana: "まいにち すこしずつ べんきょうしている つもりでも、おなじ もんだいを なんども まちがえる ことが あります。",
-        zh: "即使觉得自己每天都在一点点学习，也会有同一道题反复做错的时候。",
-        grammar: ["つもりでも = 即使自以为/打算", "何度も = 好几次、反复", "ことがあります = 有时会发生某事"],
-        words: [
-          { text: "少しずつ", reading: "すこしずつ", meaning: "一点点地", tags: ["adverb"] },
-          { text: "つもり", reading: "つもり", meaning: "打算；自以为", tags: ["grammar"] },
-          { text: "間違える", reading: "まちがえる", meaning: "弄错、答错", tags: ["verb"] }
-        ]
-      },
-      {
-        jp: "その場合、単語を増やすだけでなく、どこで迷ったのかを短く記録するとよいです。",
-        kana: "その ばあい、たんごを ふやす だけでなく、どこで まよったのかを みじかく きろくすると よいです。",
-        zh: "这种情况下，不只是增加单词量，最好也简短记录自己在哪里犹豫了。",
-        grammar: ["だけでなく = 不仅……而且", "どこで迷ったのか = 在哪里犹豫了（疑问句名词化）", "〜するとよい = 这样做比较好"],
-        words: [
-          { text: "場合", reading: "ばあい", meaning: "情况、场合", tags: ["noun"] },
-          { text: "増やす", reading: "ふやす", meaning: "增加", tags: ["verb"] },
-          { text: "記録", reading: "きろく", meaning: "记录", tags: ["noun"] }
-        ]
-      },
-      {
-        jp: "記録が残っていれば、次に読む文章は自分の弱点に合わせて選びやすくなります。",
-        kana: "きろくが のこっていれば、つぎに よむ ぶんしょうは じぶんの じゃくてんに あわせて えらびやすく なります。",
-        zh: "如果留下了记录，下一次读的文章就更容易按照自己的弱点来选择。",
-        grammar: ["〜ていれば = 如果处于某种状态", "〜に合わせて = 按照、配合", "動詞ます形 + やすい = 容易做某事"],
-        words: [
-          { text: "残る", reading: "のこる", meaning: "留下、剩下", tags: ["verb"] },
-          { text: "弱点", reading: "じゃくてん", meaning: "弱点", tags: ["noun"] },
-          { text: "合わせる", reading: "あわせる", meaning: "配合、对齐", tags: ["verb"] }
-        ]
-      }
-    ]
-  },
-  {
-    id: "jp-reading-lab-002",
-    track: "japanese",
-    module: "jp-reading",
-    type: "reading",
-    prompt: "阅读短文：新制度的说明",
-    level: "N3 → N2",
-    source: "builtin",
-    tags: ["reading-lab", "n1-bridge", "formal", "policy"],
-    summary: "练习正式说明文里常见的转折、原因和必要性表达。",
-    sentences: [
-      {
-        jp: "新しい制度を導入するにあたって、利用者への説明は欠かせません。",
-        kana: "あたらしい せいどを どうにゅうするに あたって、りようしゃへの せつめいは かかせません。",
-        zh: "在引入新制度时，面向使用者的说明不可或缺。",
-        grammar: ["〜にあたって = 在……之际", "〜への = 面向……的", "欠かせません = 不可缺少"],
-        words: [
-          { text: "制度", reading: "せいど", meaning: "制度", tags: ["n1", "noun"] },
-          { text: "導入", reading: "どうにゅう", meaning: "引入、导入", tags: ["n1", "noun"] },
-          { text: "欠かせない", reading: "かかせない", meaning: "不可缺少", tags: ["n1", "expression"] }
-        ]
-      },
-      {
-        jp: "便利になる一方で、手続きが増えると感じる人もいるからです。",
-        kana: "べんりに なる いっぽうで、てつづきが ふえると かんじる ひとも いるからです。",
-        zh: "因为一方面会变得方便，另一方面也有人会觉得手续增加了。",
-        grammar: ["一方で = 另一方面", "〜と感じる = 觉得……", "〜からです = 这是因为……"],
-        words: [
-          { text: "一方", reading: "いっぽう", meaning: "另一方面；一方", tags: ["connector"] },
-          { text: "手続き", reading: "てつづき", meaning: "手续", tags: ["noun"] },
-          { text: "感じる", reading: "かんじる", meaning: "感觉、认为", tags: ["verb"] }
-        ]
-      },
-      {
-        jp: "したがって、変更の理由を具体的に示すことが信頼につながります。",
-        kana: "したがって、へんこうの りゆうを ぐたいてきに しめす ことが しんらいに つながります。",
-        zh: "因此，具体说明变更的理由会带来信任。",
-        grammar: ["したがって = 因此", "具体的に = 具体地", "〜につながる = 导致、带来"],
-        words: [
-          { text: "具体的", reading: "ぐたいてき", meaning: "具体的", tags: ["n2", "adjective"] },
-          { text: "示す", reading: "しめす", meaning: "显示、说明", tags: ["n1", "verb"] },
-          { text: "信頼", reading: "しんらい", meaning: "信任", tags: ["n1", "noun"] }
-        ]
-      }
-    ]
-  },
-  {
-    id: "jp-reading-lab-003",
-    track: "japanese",
-    module: "jp-reading",
-    type: "reading",
-    prompt: "阅读短文：技术与判断",
-    level: "N2 → N1",
-    source: "builtin",
-    tags: ["reading-lab", "n1", "abstract", "technology"],
-    summary: "练习N1读解中常见的抽象名词、让步和作者主张。",
-    sentences: [
-      {
-        jp: "技術が発達すればするほど、私たちは早く答えを得られるようになります。",
-        kana: "ぎじゅつが はったつすれば するほど、わたしたちは はやく こたえを えられるように なります。",
-        zh: "技术越发展，我们就越能够快速得到答案。",
-        grammar: ["〜ば〜ほど = 越……越……", "得られる = 得る的可能形", "〜ようになる = 变得能够……"],
-        words: [
-          { text: "技術", reading: "ぎじゅつ", meaning: "技术", tags: ["noun"] },
-          { text: "発達", reading: "はったつ", meaning: "发展", tags: ["noun"] },
-          { text: "得る", reading: "える", meaning: "得到", tags: ["verb"] }
-        ]
-      },
-      {
-        jp: "しかし、答えが速いからといって、判断まで正しくなるとは限りません。",
-        kana: "しかし、こたえが はやいからといって、はんだんまで ただしく なるとは かぎりません。",
-        zh: "但是，不能因为答案很快，就认为连判断也一定会变正确。",
-        grammar: ["からといって = 虽说因为……但不能……", "〜まで = 连……都", "とは限りません = 不一定"],
-        words: [
-          { text: "判断", reading: "はんだん", meaning: "判断", tags: ["n1", "noun"] },
-          { text: "正しい", reading: "ただしい", meaning: "正确的", tags: ["adjective"] },
-          { text: "限る", reading: "かぎる", meaning: "限于；限定", tags: ["verb"] }
-        ]
-      },
-      {
-        jp: "情報を受け取ったあとで、根拠を確かめる姿勢こそが重要です。",
-        kana: "じょうほうを うけとった あとで、こんきょを たしかめる しせいこそが じゅうようです。",
-        zh: "接收信息之后，确认依据的态度才是重要的。",
-        grammar: ["〜たあとで = 做完……之后", "根拠を確かめる = 确认依据", "こそ = 正是、才是（强调）"],
-        words: [
-          { text: "情報", reading: "じょうほう", meaning: "信息", tags: ["noun"] },
-          { text: "根拠", reading: "こんきょ", meaning: "依据、根据", tags: ["n1", "noun"] },
-          { text: "姿勢", reading: "しせい", meaning: "态度、姿态", tags: ["n1", "noun"] }
-        ]
-      }
-    ]
-  }
-];
+    prompt: "阅读短文：" + (item.title || "第" + lesson + "课"),
+    level: "第" + lesson + "课",
+    lesson: lesson,
+    source: source || "builtin-lesson",
+    tags: ["reading-lab", "minna", "lesson-" + lesson].concat(source === "textbook" ? ["textbook"] : []),
+    summary: item.summary || "",
+    sentences: item.sentences || []
+  };
+}
+
+const japaneseReadingLabCards = (MINNA_DATA.readings || []).map(function (item, index) {
+  return buildLessonReadingCard(item, index, item.source || "builtin-lesson");
+});
+
+// 教材原文（用户本机 OCR 结果，不进仓库）：启动时尝试加载
+let textbookReadingCards = [];
+function loadLocalTextbookReadings() {
+  if (typeof fetch !== "function" || typeof document === "undefined") return;
+  fetch("data/minna/minna-readings.local.json")
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (json) {
+      var list = json && (json.readings || json);
+      if (!Array.isArray(list) || !list.length) return;
+      textbookReadingCards = list
+        .filter(function (item) { return item && Array.isArray(item.sentences) && item.sentences.length; })
+        .map(function (item, index) { return buildLessonReadingCard(item, index, "textbook"); });
+      render();
+      showToast("已加载 " + textbookReadingCards.length + " 篇本地教材课文");
+    })
+    .catch(function () { /* 没有本地课文文件时静默跳过 */ });
+}
 
 function defaultState() {
   return {
@@ -3166,6 +3082,106 @@ function n1CategoryLabel(category) {
   }[category] || category;
 }
 
+// 课次门控：带 lesson 的卡只在"已学到该课"或"可预览下一课"时进入题库
+function lessonGateOk(lesson) {
+  if (!lesson) return true;
+  var cls = currentLessonState();
+  if (lesson <= cls.lesson) return true;
+  if (cls.canPreview && lesson === cls.previewLesson) return true;
+  return false;
+}
+
+// 确定性取干扰项：从 pool 里按固定步长取 count 个与正确项不同的值
+function pickDistractors(pool, index, count, keyFn) {
+  var correct = keyFn(pool[index]);
+  var result = [];
+  var step = 7;
+  var cursor = index;
+  var guard = 0;
+  while (result.length < count && guard < pool.length * 2) {
+    cursor = (cursor + step) % pool.length;
+    step += 6;
+    guard += 1;
+    var value = keyFn(pool[cursor]);
+    if (value && value !== correct && result.indexOf(value) < 0) result.push(value);
+  }
+  return result;
+}
+
+// 把生成的卡按"到期 > 没做过 > 其他"排序后截断，避免永远只出前 N 题
+function prioritizeByProgress(cardsList, limit) {
+  var due = [], unseen = [], rest = [];
+  cardsList.forEach(function (card) {
+    var progress = cardProgress(card.id);
+    if (!progress) unseen.push(card);
+    else if (progress.due <= Date.now()) due.push(card);
+    else rest.push(card);
+  });
+  return due.concat(unseen, rest).slice(0, limit);
+}
+
+// 从 1-16 课词汇目录生成词汇题（选意思/看假名选词/看意思写词），只出已学课次
+// 结果按课次门控缓存：render 会多次调用 allCards()，避免每次重建 ~1700 个对象
+var _vocabCatalogCardsCache = { key: "", cards: null };
+function buildVocabCardsFromCatalog() {
+  var result = [];
+  if (!vocabCatalog.length) return result;
+  var cls = currentLessonState();
+  var cacheKey = cls.lesson + ":" + (cls.canPreview ? cls.previewLesson : 0);
+  if (_vocabCatalogCardsCache.key === cacheKey && _vocabCatalogCardsCache.cards) {
+    return _vocabCatalogCardsCache.cards;
+  }
+  var pool = [];
+  vocabCatalog.forEach(function (item, index) {
+    if (lessonGateOk(item.lesson)) pool.push({ item: item, catalogIndex: index });
+  });
+  // 当前课优先出题（新课词先练），干扰项也更多来自相邻课
+  pool.sort(function (a, b) { return b.item.lesson - a.item.lesson; });
+  pool.forEach(function (entry, i) {
+    var item = entry.item;
+    var id = "mv-" + entry.catalogIndex;
+    var lessonNote = "《大家的日语》第" + item.lesson + "课";
+    var baseTags = ["vocab", "dynamic", "catalog"].concat(item.tags || []);
+    // 1. 选择中文意思
+    var meaningOptions = pickDistractors(pool, i, 3, function (p) { return p.item.meaning; });
+    if (meaningOptions.length === 3) {
+      result.push({
+        id: id + "-m", track: "japanese", module: "jp-vocab", type: "choice", dynamic: true,
+        prompt: "「" + item.word + "」" + (item.reading !== item.word ? "（" + item.reading + "）" : "") + " 的中文意思是？",
+        options: [item.meaning].concat(meaningOptions),
+        answer: item.meaning,
+        explanation: item.word + "（" + item.reading + "）= " + item.meaning + " · " + lessonNote,
+        tags: baseTags
+      });
+    }
+    // 2. 看假名选写法（仅当写法与读音不同，如汉字词）
+    if (item.reading && item.reading !== item.word) {
+      var wordOptions = pickDistractors(pool, i, 3, function (p) { return p.item.word; });
+      if (wordOptions.length === 3) {
+        result.push({
+          id: id + "-k", track: "japanese", module: "jp-vocab", type: "choice", dynamic: true,
+          prompt: "假名「" + item.reading + "」（" + item.meaning + "）对应的写法是？",
+          options: [item.word].concat(wordOptions),
+          answer: item.word,
+          explanation: item.reading + " → " + item.word + " · " + lessonNote,
+          tags: baseTags.concat(["kanji-reading"])
+        });
+      }
+    }
+    // 3. 看中文写日语（主动回忆）
+    result.push({
+      id: id + "-w", track: "japanese", module: "jp-vocab", type: "input", dynamic: true,
+      prompt: "「" + item.meaning + "」的日语是？（写假名或原词）",
+      answer: item.word,
+      accepted: item.reading !== item.word ? [item.word, item.reading] : [item.word],
+      explanation: item.meaning + " = " + item.word + (item.reading !== item.word ? "（" + item.reading + "）" : "") + " · " + lessonNote,
+      tags: baseTags.concat(["recall"])
+    });
+  });
+  _vocabCatalogCardsCache = { key: cacheKey, cards: result };
+  return result;
+}
+
 // 从 vocabBank 动态生成词汇练习题（填空/选择）
 function buildVocabCardsFromBank(trackId) {
   var result = [];
@@ -3198,39 +3214,72 @@ function buildVocabCardsFromBank(trackId) {
   return result.slice(0, 40);
 }
 
-// 从 grammarBank 动态生成语法练习题（仅日语）
+// 从 grammarBank + 完整语法目录动态生成语法练习题（仅日语）
+// 每条语法最多 3 种题型：选意思、选接续、看中文选例句；干扰项来自其他语法条目
 function buildGrammarCardsFromBank() {
   var result = [];
-  // 1. 弱项语法优先（来自 grammarBank）
+  var gatedCatalog = [];
+  grammarCatalog.forEach(function (item, index) {
+    if (lessonGateOk(item.lesson)) gatedCatalog.push({ item: item, catalogIndex: index });
+  });
+  // 当前课语法优先出题
+  gatedCatalog.sort(function (a, b) { return b.item.lesson - a.item.lesson; });
+  // 1. 弱项语法优先（来自 grammarBank，用户标记"忘了"或答错过）
   var weakBank = (state.grammarBank || []).filter(function(item) { return item.pattern && (item.status === "forgot" || item.lapses > 0); });
-  weakBank.slice(-10).forEach(function(item, i) {
-    result.push(makeGrammarCard(item, "dyn-grammar-weak-" + i, ["grammar", "dynamic", "weak"].concat(item.tags || [])));
+  var weakPatterns = new Set(weakBank.map(function(item) { return item.pattern; }));
+  // 弱项条目在目录里找到完整信息后前置
+  var weakEntries = gatedCatalog.filter(function (entry) { return weakPatterns.has(entry.item.pattern); });
+  var normalEntries = gatedCatalog.filter(function (entry) { return !weakPatterns.has(entry.item.pattern); });
+  weakEntries.concat(normalEntries).forEach(function (entry) {
+    var item = entry.item;
+    var i = gatedCatalog.indexOf(entry);
+    var id = "mg-" + entry.catalogIndex;
+    var isWeak = weakPatterns.has(item.pattern);
+    var tags = ["grammar", "dynamic", isWeak ? "weak" : "catalog"].concat(item.tags || []);
+    var lessonNote = "《大家的日语》第" + (item.lesson || "?") + "课";
+    var context = item.example
+      ? { title: "大家的日语 第" + item.lesson + "课", body: [item.example], translation: item.exampleZh || "", notes: [item.connection || item.pattern] }
+      : undefined;
+    // 1) 选正确意思
+    var meaningOptions = pickDistractors(gatedCatalog, i, 3, function (p) { return p.item.meaning; });
+    if (item.meaning && meaningOptions.length === 3) {
+      result.push({
+        id: id + "-m", track: "japanese", module: "jp-grammar", type: "choice", dynamic: true,
+        prompt: "语法「" + item.pattern + "」的意思是？",
+        options: [item.meaning].concat(meaningOptions),
+        answer: item.meaning,
+        explanation: item.pattern + " = " + item.meaning + (item.connection ? " · 接续：" + item.connection : "") + " · " + lessonNote,
+        tags: tags, context: context
+      });
+    }
+    // 2) 选正确接续
+    var connectionOptions = pickDistractors(gatedCatalog, i, 3, function (p) { return p.item.connection; });
+    if (item.connection && connectionOptions.length === 3) {
+      result.push({
+        id: id + "-c", track: "japanese", module: "jp-grammar", type: "choice", dynamic: true,
+        prompt: "「" + item.pattern + "」（" + (item.meaning || "") + "）的正确接续是？",
+        options: [item.connection].concat(connectionOptions),
+        answer: item.connection,
+        explanation: item.pattern + " · 接续：" + item.connection + " · " + lessonNote,
+        tags: tags.concat(["connection"]), context: context
+      });
+    }
+    // 3) 看中文选例句（需要例句数据）
+    if (item.example && item.exampleZh) {
+      var exampleOptions = pickDistractors(gatedCatalog, i, 3, function (p) { return p.item.example; });
+      if (exampleOptions.length === 3) {
+        result.push({
+          id: id + "-e", track: "japanese", module: "jp-grammar", type: "choice", dynamic: true,
+          prompt: "「" + item.exampleZh + "」用日语怎么说？",
+          options: [item.example].concat(exampleOptions),
+          answer: item.example,
+          explanation: item.exampleZh + " → " + item.example + " · 语法点：" + item.pattern + " · " + lessonNote,
+          tags: tags.concat(["sentence-pattern"])
+        });
+      }
+    }
   });
-  // 2. 从完整语法目录穷举（grammarCatalog）
-  var usedPatterns = new Set(weakBank.map(function(item) { return item.pattern; }));
-  grammarCatalog.forEach(function(item, i) {
-    if (usedPatterns.has(item.pattern)) return; // 弱项已覆盖
-    result.push(makeGrammarCard(item, "dyn-grammar-cat-" + i, ["grammar", "dynamic", "catalog"].concat(item.tags || [])));
-  });
-  return result.slice(0, 30);
-}
-
-function makeGrammarCard(item, id, tags) {
-  return {
-    id: id, track: "japanese", module: "jp-grammar",
-    type: "choice", dynamic: true,
-    prompt: "语法「" + item.pattern + "」" + (item.meaning ? "（" + item.meaning + "）" : "") + "的正确理解是？",
-    options: [
-      item.meaning || item.pattern,
-      item.connection || "动词基本形 + " + item.pattern,
-      "不可以使用" + item.pattern,
-      "仅用于书面语"
-    ],
-    answer: item.meaning || item.pattern,
-    explanation: (item.meaning || "") + (item.connection ? " · 接续：" + item.connection : "") + " · 《大家的日语》第" + (item.lesson || "?") + "课",
-    tags: tags || [],
-    context: item.lesson ? { title: "大家的日语 第" + item.lesson + "课", body: [item.connection || item.pattern], translation: item.meaning || "", notes: [item.pattern] } : undefined
-  };
+  return result;
 }
 
 function allCards() {
@@ -3238,10 +3287,16 @@ function allCards() {
   // 根据当前任务动态补充词汇/语法题
   if (state.activeTask === "vocab") {
     dynamicCards = buildVocabCardsFromBank(state.activeTrack);
+    if (state.activeTrack === "japanese") {
+      // 收藏词题 + 课本目录题：目录题按"到期 > 没做过 > 其他"轮换，避免永远出前几题
+      dynamicCards = dynamicCards.concat(prioritizeByProgress(buildVocabCardsFromCatalog(), 150));
+    }
   } else if (state.activeTask === "grammar" && state.activeTrack === "japanese") {
-    dynamicCards = buildGrammarCardsFromBank();
+    dynamicCards = prioritizeByProgress(buildGrammarCardsFromBank(), 120);
   }
-  return [...cards, ...japaneseReadingLabCards, ...state.customCards, ...state.generatedCards, ...dynamicCards];
+  var pool = [...cards, ...japaneseReadingLabCards, ...textbookReadingCards, ...state.customCards, ...state.generatedCards, ...dynamicCards];
+  // 课次门控：还没学到的课的卡不进入题库（预览课除外）
+  return pool.filter(function (card) { return lessonGateOk(card.lesson); });
 }
 
 function getTrack(id = state.activeTrack) {
@@ -3300,11 +3355,23 @@ function shuffledOrder(n) {
   return order;
 }
 
+// 任务过滤：词汇题/语法题只出对应题型，阅读任务保持阅读驱动的混合队列
+function cardMatchesTask(card) {
+  var task = state.activeTask || "reading";
+  if (task === "vocab") {
+    return card.module === "jp-vocab" || card.module === "en-vocab" || (card.tags || []).indexOf("vocab") >= 0;
+  }
+  if (task === "grammar") {
+    return card.module === "jp-grammar" || (card.tags || []).indexOf("grammar") >= 0 || (card.tags || []).indexOf("sentence-pattern") >= 0;
+  }
+  return true;
+}
+
 function buildQueue(mode) {
   // 智能模式：始终使用 adaptive 算法，task 决定过滤偏向
   state.mode = "smart";
   if (!mode) mode = "adaptive";
-  const pool = filteredCards();
+  const pool = filteredCards().filter(cardMatchesTask);
   const due = pool.filter(isDue);
   const weak = pool
     .filter((card) => cardProgress(card.id))
@@ -3621,7 +3688,15 @@ function buildSmartQueue(pool, profile) {
   });
   // 到期阅读卡优先
   const dueReading = readingCards.filter(function(card) { return cardProgress(card.id) && isDue(card); });
-  const newReading = readingCards.filter(function(card) { return !cardProgress(card.id); });
+  // 新阅读卡：教材原文（本地加载）优先，其次按课次从当前课往前排
+  const newReading = readingCards
+    .filter(function(card) { return !cardProgress(card.id); })
+    .sort(function(a, b) {
+      var aTextbook = a.source === "textbook" ? 1 : 0;
+      var bTextbook = b.source === "textbook" ? 1 : 0;
+      if (aTextbook !== bTextbook) return bTextbook - aTextbook;
+      return (b.lesson || 0) - (a.lesson || 0);
+    });
   // 今日相关
   const todayExact = available.filter(function(card) { return card.sourceLogId === profile.dailyLog?.id; });
   const todaySignal = available.filter(function(card) { return cardMatchesSignals(card, profile.dailySignals); });
@@ -4015,6 +4090,9 @@ function render() {
         <div class="side-stack">
           ${renderLearningOverviewPanel(stats)}
           ${renderVocabPanel()}
+          ${renderGrammarPanel()}
+          ${renderVocabCatalogPanel()}
+          ${renderGrammarCatalogPanel()}
         </div>
       </div>
     </main>
@@ -4196,6 +4274,7 @@ function renderTabbar() {
   return `
     <nav class="tabbar" aria-label="主导航">
       ${renderTab("practice", "练习", "✎")}
+      ${renderTab("vocab", "生词", "▤")}
       ${renderTab("progress", "进度", "▲")}
       <button class="tab-button${state.settingsOpen ? " is-active" : ""}" data-action="open-settings">
         <span class="tab-icon" aria-hidden="true">⚙</span>
@@ -5910,6 +5989,23 @@ function handleAction(event) {
     return;
   }
 
+  if (action === "catalog-lesson") {
+    state.catalogLesson = Number(button.dataset.lesson) || 1;
+    saveState();
+    render();
+    return;
+  }
+
+  if (action === "catalog-word-mark") {
+    markCatalogWord(button.dataset.word, button.dataset.status);
+    return;
+  }
+
+  if (action === "catalog-grammar-mark") {
+    markCatalogGrammar(button.dataset.pattern, button.dataset.status);
+    return;
+  }
+
   if (action === "reading-ai-passage") {
     generateReadingPassageFromAi();
     return;
@@ -6287,7 +6383,7 @@ async function handleReadingChatSubmit(event) {
 async function generateReadingPassageFromAi() {
   if (state.readingAiBusy) return;
   state.readingAiBusy = true;
-  state.readingAiMessage = "AI 正在根据你的忘词、弱项和N1阶段编辑新短文…";
+  state.readingAiMessage = "AI 正在根据你的忘词、弱项和课本进度编辑新短文…";
   render();
   try {
     const data = await requestReadingPassage();
@@ -6539,6 +6635,74 @@ function collectGrammarPoint(raw) {
   saveState();
   render();
   scheduleCloudSync();
+}
+
+// 从课本词汇目录标记：不在生词本时先加入，再标记状态
+function markCatalogWord(word, status) {
+  var entry = vocabCatalog.find(function (item) { return item.word === word; });
+  if (!entry) return;
+  state.vocabBank = state.vocabBank || [];
+  var now = new Date().toISOString();
+  var vb = state.vocabBank.find(function (item) {
+    return item.track === "japanese" && normalizeJapaneseWord(item.word) === normalizeJapaneseWord(word);
+  });
+  if (!vb) {
+    vb = {
+      id: "vocab-jp-catalog-" + normalizeJapaneseWord(word),
+      track: "japanese",
+      word: entry.word,
+      reading: entry.reading !== entry.word ? entry.reading : "",
+      meaning: entry.meaning,
+      sourceSentence: "",
+      tags: ["vocab", "catalog"].concat(entry.tags || []),
+      status: "new",
+      correct: 0,
+      lapses: 0,
+      createdAt: now
+    };
+    state.vocabBank.push(vb);
+  }
+  vb.status = status === "known" ? "known" : "forgot";
+  vb.updatedAt = now;
+  if (vb.status === "known") vb.correct = (vb.correct || 0) + 1;
+  else vb.lapses = (vb.lapses || 0) + 1;
+  state.vocabBank = state.vocabBank.slice(-500);
+  saveState();
+  render();
+  scheduleCloudSync();
+  showToast((vb.status === "known" ? "已标记掌握：" : "已加入生词本并标记忘了：") + word);
+}
+
+// 从课本语法目录标记：不在语法银行时先加入，再标记状态
+function markCatalogGrammar(pattern, status) {
+  var entry = grammarCatalog.find(function (item) { return item.pattern === pattern; });
+  if (!entry) return;
+  state.grammarBank = state.grammarBank || [];
+  var now = new Date().toISOString();
+  var gb = state.grammarBank.find(function (item) { return item.pattern === pattern; });
+  if (!gb) {
+    gb = {
+      id: "grammar-catalog-" + state.grammarBank.length + "-" + Date.now(),
+      pattern: entry.pattern,
+      meaning: entry.meaning || "",
+      connection: entry.connection || "",
+      lesson: entry.lesson,
+      tags: ["grammar", "catalog"].concat(entry.tags || []),
+      status: "new",
+      correct: 0,
+      lapses: 0,
+      createdAt: now
+    };
+    state.grammarBank.push(gb);
+  }
+  gb.status = status === "known" ? "known" : "forgot";
+  gb.updatedAt = now;
+  if (gb.status === "known") gb.correct = (gb.correct || 0) + 1;
+  else gb.lapses = (gb.lapses || 0) + 1;
+  saveState();
+  render();
+  scheduleCloudSync();
+  showToast((gb.status === "known" ? "已标记掌握：" : "已加入语法银行并标记忘了：") + pattern);
 }
 
 function markGrammarPoint(pattern, status) {
@@ -7264,7 +7428,7 @@ function renderVocabPanel() {
   const cardWords = state.customCards.filter(function(card) { return card.module === "en-vocab" && !card.tags?.includes("reverse"); });
   const totalCount = vbWords.length || cardWords.length;
   return `
-    <section class="custom-panel vocab-panel" data-view="practice">
+    <section class="custom-panel vocab-panel" data-view="vocab">
       <h3 class="panel-title">英语生词复习</h3>
       <p class="daily-meta">从阅读中遇到的新词加进来，会自动变成填空复习题，并进入智能推荐和同步。</p>
       <form data-action="vocab-form">
@@ -7286,7 +7450,7 @@ function renderJapaneseVocabPanel() {
   var pendingCount = allWords.filter(function(w) { return !w.meaning || w.meaning === "待解析"; }).length;
   var words = allWords.slice(0, 20);
   return `
-    <section class="custom-panel vocab-panel" data-view="practice">
+    <section class="custom-panel vocab-panel" data-view="vocab">
       <h3 class="panel-title">日语阅读生词 <small>(${allWords.length} 词${pendingCount ? "，" + pendingCount + " 待解析" : ""})</small></h3>
       <p class="daily-meta">在阅读短文里点词或选词即可收藏。点「补充释义」可手动添加或调用 AI 解析。</p>
       <ul class="jp-vocab-list">
@@ -7326,8 +7490,8 @@ function renderGrammarPanel() {
   if (state.activeTrack !== "japanese") return "";
   var items = (state.grammarBank || []).slice(-10).reverse();
   return `
-    <section class="custom-panel grammar-panel" data-view="practice">
-      <h3 class="panel-title">日语弱项语法</h3>
+    <section class="custom-panel grammar-panel" data-view="vocab">
+      <h3 class="panel-title">日语语法银行 <small>(${(state.grammarBank || []).length} 条)</small></h3>
       <p class="daily-meta">在阅读短文里点语法点即可收藏。标记「忘了」的语法点会优先进入智能推荐。</p>
       <ul class="jp-vocab-list">
         ${
@@ -7346,6 +7510,85 @@ function renderGrammarPanel() {
             `; }).join("")
             : `<li><div><b>还没有收藏</b><span>去阅读短文里点语法点。</span></div></li>`
         }
+      </ul>
+    </section>
+  `;
+}
+
+// 课本词汇目录：按课浏览 1-16 课全部词汇，可标记忘了/掌握（写入 vocabBank 进入出题）
+function renderVocabCatalogPanel() {
+  if (state.activeTrack !== "japanese" || !vocabCatalog.length) return "";
+  var cls = currentLessonState();
+  var activeLesson = Number(state.catalogLesson) || cls.lesson;
+  var lessons = [];
+  for (var l = 1; l <= Math.max(cls.lesson, 16); l += 1) lessons.push(l);
+  var words = vocabCatalog.filter(function (item) { return item.lesson === activeLesson; });
+  var bankIndex = {};
+  (state.vocabBank || []).forEach(function (item) {
+    if (item.track === "japanese" && item.word) bankIndex[item.word] = item.status || "";
+  });
+  return `
+    <section class="custom-panel vocab-panel" data-view="vocab">
+      <h3 class="panel-title">课本词汇目录 <small>(共 ${vocabCatalog.length} 词 · 第 ${activeLesson} 课 ${words.length} 词)</small></h3>
+      <p class="daily-meta">《大家的日语》1-16 课词汇全部载入。点「忘了」加入生词本并优先出题。</p>
+      <div class="chip-row catalog-lesson-row">
+        ${lessons.map(function (l) {
+          return `<button class="plain-button lesson-chip${l === activeLesson ? " is-active" : ""}" data-action="catalog-lesson" data-lesson="${l}">${l}</button>`;
+        }).join("")}
+      </div>
+      <ul class="jp-vocab-list">
+        ${words.map(function (item) {
+          var status = bankIndex[item.word] || "";
+          var statusCls = status === "known" ? " status-known" : status === "forgot" ? " status-forgot" : "";
+          return `
+            <li class="${statusCls}">
+              <div>
+                <b>${escapeHtml(item.word)}</b>
+                <span>${escapeHtml([item.reading !== item.word ? item.reading : "", item.meaning, item.partOfSpeech].filter(Boolean).join(" · "))}</span>
+              </div>
+              <div class="mini-actions">
+                <button class="plain-button" data-action="catalog-word-mark" data-word="${escapeHtml(item.word)}" data-status="forgot">忘了</button>
+                <button class="plain-button" data-action="catalog-word-mark" data-word="${escapeHtml(item.word)}" data-status="known">掌握</button>
+              </div>
+            </li>
+          `;
+        }).join("")}
+      </ul>
+    </section>
+  `;
+}
+
+// 课本语法目录：1-16 课全部句型，可标记忘了/掌握（写入 grammarBank 进入出题）
+function renderGrammarCatalogPanel() {
+  if (state.activeTrack !== "japanese" || !grammarCatalog.length) return "";
+  var cls = currentLessonState();
+  var activeLesson = Number(state.catalogLesson) || cls.lesson;
+  var items = grammarCatalog.filter(function (item) { return item.lesson === activeLesson; });
+  var bankIndex = {};
+  (state.grammarBank || []).forEach(function (item) {
+    if (item.pattern) bankIndex[item.pattern] = item.status || "";
+  });
+  return `
+    <section class="custom-panel grammar-panel" data-view="vocab">
+      <h3 class="panel-title">课本语法目录 <small>(共 ${grammarCatalog.length} 条 · 第 ${activeLesson} 课 ${items.length} 条)</small></h3>
+      <p class="daily-meta">与上方词汇目录共用课次选择。点「忘了」的语法点会优先出题。</p>
+      <ul class="jp-vocab-list">
+        ${items.map(function (item) {
+          var status = bankIndex[item.pattern] || "";
+          var statusCls = status === "known" ? " status-known" : status === "forgot" ? " status-forgot" : "";
+          return `
+            <li class="${statusCls}">
+              <div>
+                <b>${escapeHtml(item.pattern)}</b>
+                <span>${escapeHtml(item.meaning || "")}${item.example ? `<br><em>${escapeHtml(item.example)}</em>` : ""}</span>
+              </div>
+              <div class="mini-actions">
+                <button class="plain-button" data-action="catalog-grammar-mark" data-pattern="${escapeHtml(item.pattern)}" data-status="forgot">忘了</button>
+                <button class="plain-button" data-action="catalog-grammar-mark" data-pattern="${escapeHtml(item.pattern)}" data-status="known">掌握</button>
+              </div>
+            </li>
+          `;
+        }).join("")}
       </ul>
     </section>
   `;
@@ -7523,6 +7766,7 @@ if (typeof document !== "undefined") {
   render();
   registerServiceWorker();
   syncOnStartup();
+  loadLocalTextbookReadings();
 }
 
 // 让纯逻辑可以在 Node 里被 require 进行单元测试（浏览器中 module 未定义，自动跳过）。
@@ -7543,6 +7787,14 @@ if (typeof module !== "undefined" && module.exports) {
     findJpVocab,
     findJpVocabIn,
     normalizeReadingCard,
-    normalizeJapaneseWord
+    normalizeJapaneseWord,
+    vocabCatalog,
+    grammarCatalog,
+    pickDistractors,
+    buildVocabCardsFromCatalog,
+    buildGrammarCardsFromBank,
+    buildLessonReadingCard,
+    lessonGateOk,
+    japaneseReadingLabCards
   };
 }

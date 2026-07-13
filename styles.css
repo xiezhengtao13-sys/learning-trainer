@@ -807,6 +807,29 @@ button {
   color: var(--green);
 }
 
+/* 课本目录：课次选择条（横向滚动） */
+.catalog-lesson-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lesson-chip {
+  min-width: 40px;
+  min-height: 36px;
+  padding: 6px 10px;
+  flex: 0 0 auto;
+}
+
+.lesson-chip.is-active {
+  background: color-mix(in srgb, var(--track-color) 16%, transparent);
+  border-color: var(--track-color);
+  color: var(--track-color);
+  font-weight: 700;
+}
+
 .side-stack {
   display: grid;
   align-self: start;
@@ -1699,7 +1722,7 @@ button {
 
   .tabbar {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 4px;
     position: fixed;
     left: 0;
@@ -1740,6 +1763,7 @@ button {
 
   /* 只显示当前视图对应的区块，其余隐藏（标签按钮不受影响）。 */
   .app-shell[data-view="practice"] [data-view]:not([data-view="practice"]),
+  .app-shell[data-view="vocab"] [data-view]:not([data-view="vocab"]),
   .app-shell[data-view="progress"] [data-view]:not([data-view="progress"]) {
     display: none;
   }
