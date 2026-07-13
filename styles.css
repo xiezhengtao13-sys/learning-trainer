@@ -529,6 +529,19 @@ button {
   font-size: 0.84rem;
 }
 
+.badge-ai-gen {
+  display: inline-block;
+  padding: 1px 7px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: #fff3e0;
+  color: #e65100;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+  border: 1px solid #ffcc80;
+}
+
 .reading-boundary,
 .sentence-grammar,
 .word-chip-row {

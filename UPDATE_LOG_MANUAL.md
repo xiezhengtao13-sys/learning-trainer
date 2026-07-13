@@ -969,3 +969,38 @@
 ### 下一步建议
 - 手机上逐课过一遍生词目录，把不会的标「忘了」喂给出题
 - 优先级 2（数据保存安全：deviceId/revision/本地恢复点）仍是下一个该做的
+
+---
+
+## 2026-07-14 第 29 次修改
+
+### 本次目标
+- 基于已有词库（624 词）和语法（80 条），创建 30 篇 AI 生成短文，与课文题库分开，标记为「AI生成」
+
+### 实际改动文件
+- `data/ai-generated-readings.js`（新建）
+- `app.js`
+- `index.html`
+- `styles.css`
+- `service-worker.js`
+- `test.js`
+
+### 完成内容
+- **30 篇 AI 生成短文**：按课次分三个等级（1-5课 8 篇 / 6-10课 10 篇 / 11-16课 12 篇），每篇 4-6 句，仅使用已学词汇语法
+- **数据隔离**：`source: "ai-generated"` + `tags: ["ai-generated"]`，与课文原文（builtin-lesson）和教材 OCR（textbook）区分
+- **队列优先级**：教材原文 > 课文原文 > AI 生成短文
+- **视觉标记**：阅读卡片标题旁显示「🤖 AI生成」橙色徽章
+- **构建函数增强**：`buildLessonReadingCard` 支持 ai-generated 标签自动注入
+- **缓存升级**：service-worker v9 → v10，预缓存新数据文件
+
+### 测试结果
+- node --check app.js / data/ai-generated-readings.js / service-worker.js ✓
+- node test.js: 35 passed, 0 failed（33→35，新增 AI 短文结构完整性 + 课次范围覆盖 2 项测试）
+
+### 当前状态
+- 短文共 48 篇（课文 18 + AI 30）、词汇 624、语法 80，全程序约 2200+ 题
+- 手机端联网打开自动更新（SW v10 network-first），AI 短文有独立徽章
+
+### 下一步建议
+- 手机端验：短文阅读标签下遍历几张 AI 短文，确认徽章显示和内容质量
+- 后续可继续扩充 AI 短文数量或增加阅读理解选择题

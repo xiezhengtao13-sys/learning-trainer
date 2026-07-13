@@ -24,7 +24,8 @@ const {
   buildVocabCardsFromCatalog,
   buildGrammarCardsFromBank,
   lessonGateOk,
-  japaneseReadingLabCards
+  japaneseReadingLabCards,
+  aiReadingCards
 } = require("./app.js");
 
 let passed = 0;
@@ -346,6 +347,36 @@ test("阅读目录：短文覆盖全部课次且句子结构完整", () => {
       assert.ok(Array.isArray(s.grammar) && Array.isArray(s.words), `句子缺 grammar/words: ${card.prompt}`);
     });
   });
+});
+
+test("AI生成短文：共30篇且字段完整", () => {
+  assert.ok(aiReadingCards, "aiReadingCards 应存在");
+  assert.strictEqual(aiReadingCards.length, 30, `应有 30 篇 AI 生成短文，实际 ${aiReadingCards.length}`);
+  const ids = new Set(aiReadingCards.map(function (c) { return c.id; }));
+  assert.strictEqual(ids.size, aiReadingCards.length, "AI 短文 ID 不应重复");
+  aiReadingCards.forEach(function (card) {
+    assert.strictEqual(card.type, "reading", "type 应为 reading");
+    assert.strictEqual(card.source, "ai-generated", `source 应为 ai-generated，实际 ${card.source}`);
+    assert.ok(card.tags.includes("ai-generated"), `缺少 ai-generated 标签: ${card.prompt}`);
+    assert.ok(card.sentences.length >= 3, `句子太少: ${card.prompt}`);
+    card.sentences.forEach(function (s) {
+      assert.ok(s.jp && s.kana && s.zh, `句子字段不完整: ${card.prompt}`);
+      assert.ok(Array.isArray(s.grammar) && Array.isArray(s.words), `缺 grammar/words: ${card.prompt}`);
+    });
+  });
+});
+
+test("AI生成短文：覆盖 1-5 / 6-10 / 11-16 三个课次范围", function () {
+  var ranges = { beginner: 0, intermediate: 0, advanced: 0 };
+  aiReadingCards.forEach(function (card) {
+    var lesson = card.lesson || 0;
+    if (lesson >= 1 && lesson <= 5) ranges.beginner += 1;
+    else if (lesson >= 6 && lesson <= 10) ranges.intermediate += 1;
+    else if (lesson >= 11 && lesson <= 16) ranges.advanced += 1;
+  });
+  assert.ok(ranges.beginner >= 5, "1-5 课范围应 >= 5 篇，实际 " + ranges.beginner);
+  assert.ok(ranges.intermediate >= 8, "6-10 课范围应 >= 8 篇，实际 " + ranges.intermediate);
+  assert.ok(ranges.advanced >= 8, "11-16 课范围应 >= 8 篇，实际 " + ranges.advanced);
 });
 
 test("pickDistractors 确定性且不含正确项", () => {

@@ -80,6 +80,15 @@ const MINNA_DATA = (function () {
   return { vocab: [], grammar: [], readings: [] };
 })();
 
+// AI生成短文：30篇，仅使用第1-16课词汇/语法，标记为 source="ai-generated"
+const AI_READINGS_DATA = (function () {
+  if (typeof AI_GENERATED_READINGS !== "undefined") return AI_GENERATED_READINGS;
+  if (typeof require === "function" && typeof module !== "undefined") {
+    try { return require("./data/ai-generated-readings.js"); } catch (e) { /* Node 下缺文件时回退 */ }
+  }
+  return { readings: [] };
+})();
+
 // 词汇目录：1-16 课全部词条（word/reading/meaning/lesson/partOfSpeech/tags）
 const vocabCatalog = MINNA_DATA.vocab || [];
 
@@ -2827,7 +2836,10 @@ function buildLessonReadingCard(item, index, source) {
     level: "第" + lesson + "课",
     lesson: lesson,
     source: source || "builtin-lesson",
-    tags: ["reading-lab", "minna", "lesson-" + lesson].concat(source === "textbook" ? ["textbook"] : []),
+    tags: ["reading-lab", "minna", "lesson-" + lesson].concat(
+      source === "textbook" ? ["textbook"] : [],
+      source === "ai-generated" ? ["ai-generated"] : []
+    ),
     summary: item.summary || "",
     sentences: item.sentences || []
   };
@@ -2835,6 +2847,11 @@ function buildLessonReadingCard(item, index, source) {
 
 const japaneseReadingLabCards = (MINNA_DATA.readings || []).map(function (item, index) {
   return buildLessonReadingCard(item, index, item.source || "builtin-lesson");
+});
+
+// AI生成短文卡：30篇，标记为 source="ai-generated"，使用 lessonRange 标记适用课次范围
+const aiReadingCards = (AI_READINGS_DATA.readings || []).map(function (item, index) {
+  return buildLessonReadingCard(item, index, "ai-generated");
 });
 
 // 教材原文（用户本机 OCR 结果，不进仓库）：启动时尝试加载
@@ -3294,7 +3311,7 @@ function allCards() {
   } else if (state.activeTask === "grammar" && state.activeTrack === "japanese") {
     dynamicCards = prioritizeByProgress(buildGrammarCardsFromBank(), 120);
   }
-  var pool = [...cards, ...japaneseReadingLabCards, ...textbookReadingCards, ...state.customCards, ...state.generatedCards, ...dynamicCards];
+  var pool = [...cards, ...japaneseReadingLabCards, ...aiReadingCards, ...textbookReadingCards, ...state.customCards, ...state.generatedCards, ...dynamicCards];
   // 课次门控：还没学到的课的卡不进入题库（预览课除外）
   return pool.filter(function (card) { return lessonGateOk(card.lesson); });
 }
@@ -3688,13 +3705,14 @@ function buildSmartQueue(pool, profile) {
   });
   // 到期阅读卡优先
   const dueReading = readingCards.filter(function(card) { return cardProgress(card.id) && isDue(card); });
-  // 新阅读卡：教材原文（本地加载）优先，其次按课次从当前课往前排
+  // 新阅读卡：教材原文（本地加载）优先，其次课文原文，AI生成最后；同来源按课次从当前课往前排
   const newReading = readingCards
     .filter(function(card) { return !cardProgress(card.id); })
     .sort(function(a, b) {
-      var aTextbook = a.source === "textbook" ? 1 : 0;
-      var bTextbook = b.source === "textbook" ? 1 : 0;
-      if (aTextbook !== bTextbook) return bTextbook - aTextbook;
+      var order = { "textbook": 3, "builtin-lesson": 2, "ai-generated": 1 };
+      var aOrder = order[a.source] || 0;
+      var bOrder = order[b.source] || 0;
+      if (aOrder !== bOrder) return bOrder - aOrder;
       return (b.lesson || 0) - (a.lesson || 0);
     });
   // 今日相关
@@ -4527,11 +4545,12 @@ function renderReadingLab(card) {
   const sentences = Array.isArray(card.sentences) ? card.sentences : [];
   const chat = state.readingChat?.[card.id] || [];
   const boundary = readingKnowledgeBoundary();
+  const isAiGenerated = card.source === "ai-generated";
   return `
     <div class="reading-lab">
       <div class="reading-brief">
         <div>
-          <span>${escapeHtml(card.level || "N1 bridge")}</span>
+          <span>${escapeHtml(card.level || "N1 bridge")}${isAiGenerated ? ' <span class="badge-ai-gen">🤖 AI生成</span>' : ""}</span>
           <strong>${escapeHtml(card.summary || "先读完整短文，再逐句拆解。")}</strong>
         </div>
         <button class="plain-button" data-action="reading-ai-passage">按我的边界生成新短文</button>
@@ -7795,6 +7814,7 @@ if (typeof module !== "undefined" && module.exports) {
     buildGrammarCardsFromBank,
     buildLessonReadingCard,
     lessonGateOk,
-    japaneseReadingLabCards
+    japaneseReadingLabCards,
+    aiReadingCards
   };
 }
