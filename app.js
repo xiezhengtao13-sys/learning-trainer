@@ -3020,6 +3020,7 @@ function migrateToVocabBank(data) {
 }
 
 function saveState() {
+  bumpStateRevision(); // 任何持久化变更都让 allCards() 缓存失效
   const { queue, currentId, selected, typed, arranged, tokenOrder, optionOrder, revealAnswer, cardShownAt, analysisOpen, analyzing, submitted, lastResult, sampleOpen, translationOpen, syncText, syncMessage, aiMessage, toast, viewAnim, readingAiBusy, readingAiMessage, ...persisted } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
 }
@@ -3100,9 +3101,9 @@ function n1CategoryLabel(category) {
 }
 
 // 课次门控：带 lesson 的卡只在"已学到该课"或"可预览下一课"时进入题库
-function lessonGateOk(lesson) {
+function lessonGateOk(lesson, cls) {
   if (!lesson) return true;
-  var cls = currentLessonState();
+  cls = cls || currentLessonState();
   if (lesson <= cls.lesson) return true;
   if (cls.canPreview && lesson === cls.previewLesson) return true;
   return false;
@@ -3150,7 +3151,7 @@ function buildVocabCardsFromCatalog() {
   }
   var pool = [];
   vocabCatalog.forEach(function (item, index) {
-    if (lessonGateOk(item.lesson)) pool.push({ item: item, catalogIndex: index });
+    if (lessonGateOk(item.lesson, cls)) pool.push({ item: item, catalogIndex: index });
   });
   // 当前课优先出题（新课词先练），干扰项也更多来自相邻课
   pool.sort(function (a, b) { return b.item.lesson - a.item.lesson; });
@@ -3236,8 +3237,9 @@ function buildVocabCardsFromBank(trackId) {
 function buildGrammarCardsFromBank() {
   var result = [];
   var gatedCatalog = [];
+  var gcls = currentLessonState();
   grammarCatalog.forEach(function (item, index) {
-    if (lessonGateOk(item.lesson)) gatedCatalog.push({ item: item, catalogIndex: index });
+    if (lessonGateOk(item.lesson, gcls)) gatedCatalog.push({ item: item, catalogIndex: index });
   });
   // 当前课语法优先出题
   gatedCatalog.sort(function (a, b) { return b.item.lesson - a.item.lesson; });
@@ -3299,7 +3301,17 @@ function buildGrammarCardsFromBank() {
   return result;
 }
 
+// allCards() 在一次渲染/事件处理里会被调用多次（getCard / filteredCards / 队列构建），
+// 每次重建 ~2000 张卡的池很浪费。用 stateRevision 做缓存：只要没发生持久化变更
+// （saveState 会 bump revision）且任务/科目未变，就复用上次的池。
+var _allCardsCache = { key: "", pool: null };
+var _stateRevision = 0;
+function bumpStateRevision() { _stateRevision += 1; }
+
 function allCards() {
+  var cacheKey = _stateRevision + "|" + (state.activeTask || "") + "|" + (state.activeTrack || "") + "|" + textbookReadingCards.length;
+  if (_allCardsCache.key === cacheKey && _allCardsCache.pool) return _allCardsCache.pool;
+
   var dynamicCards = [];
   // 根据当前任务动态补充词汇/语法题
   if (state.activeTask === "vocab") {
@@ -3312,8 +3324,11 @@ function allCards() {
     dynamicCards = prioritizeByProgress(buildGrammarCardsFromBank(), 120);
   }
   var pool = [...cards, ...japaneseReadingLabCards, ...aiReadingCards, ...textbookReadingCards, ...state.customCards, ...state.generatedCards, ...dynamicCards];
-  // 课次门控：还没学到的课的卡不进入题库（预览课除外）
-  return pool.filter(function (card) { return lessonGateOk(card.lesson); });
+  // 课次门控：还没学到的课的卡不进入题库（预览课除外）。cls 在整轮过滤里恒定，算一次即可。
+  var cls = currentLessonState();
+  var result = pool.filter(function (card) { return lessonGateOk(card.lesson, cls); });
+  _allCardsCache = { key: cacheKey, pool: result };
+  return result;
 }
 
 function getTrack(id = state.activeTrack) {
