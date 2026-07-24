@@ -55,14 +55,37 @@ const japaneseN1Phases = [
 ];
 
 // 大家的日语教材配置：AI 生成短文和题目的基础约束
+// 手动课次基线：数据里补完一课、并且确认要开始学时把它调高一格。
+// loadState 会用它把已保存的进度推到这一课（只推一次），所以调整这里等于"直接开始第 N 课"，
+// 不受掌握度门控影响；N → N+1 的自动推进仍然由 maybeAdvanceLesson 的 80% 规则管。
+const MINNA_LESSON_BASELINE = 17;
+
+// 版本号：显示在设置里，方便确认手机上的更新到底生效了没有。发版时改这里。
+const APP_VERSION = "2026-07-24";
+
+// 每轮默认题数。defaultState() 在模块初始化时就会跑，所以这个常量必须声明在它之前。
+const DEFAULT_MANUAL_SESSION_SIZE = 20;
+
+// 答题历史保留条数。按每天 20 题算约能存 2 个月，够做长期趋势分析。
+// 云端合并时用同一个上限，避免两边不一致导致同步后又被截断。
+const HISTORY_LIMIT = 1200;
+
+// 词汇/语法题里"产出题"（自己写答案）的目标占比。0.6 = 大约每 5 题里 3 题要自己写。
+const DEFAULT_PRODUCTION_RATIO = 0.6;
+
+// 推进课次前每课至少要练够的题数。一课约 40 词 / 7 条语法，
+// 这个量级保证 80% 是"练了一批之后的 80%"，而不是"答对 1 题的 100%"。
+const MIN_VOCAB_SAMPLES = 15;
+const MIN_GRAMMAR_SAMPLES = 8;
+
 const japaneseSourceProfile = {
   textbook: "minna-no-nihongo",
   displayName: "大家的日语",
   sourceDir: "minasang",
-  currentLesson: 16,
+  currentLesson: MINNA_LESSON_BASELINE,
   masteryEstimate: 0.4,
-  activeLessons: { from: 1, to: 16 },
-  previewLessons: { from: 17, to: 25 },
+  activeLessons: { from: 1, to: MINNA_LESSON_BASELINE },
+  previewLessons: { from: MINNA_LESSON_BASELINE + 1, to: 25 },
   primaryPdf: "minasang/本册.pdf",
   grammarPdf: "minasang/文法.pdf",
   // 掌握度低于此值不推进课次
@@ -71,7 +94,7 @@ const japaneseSourceProfile = {
   priorityGrammar: ["te-form", "nai-form", "plain-form", "particle", "giving-receiving", "permission", "ongoing", "conjunction"]
 };
 
-// 《大家的日语》1-16 课完整数据（词汇/语法/分课短文），来自 data/minna-lessons.js
+// 《大家的日语》1-17 课完整数据（词汇/语法/分课短文），来自 data/minna-lessons.js
 const MINNA_DATA = (function () {
   if (typeof MINNA_LESSONS !== "undefined") return MINNA_LESSONS;
   if (typeof require === "function" && typeof module !== "undefined") {
@@ -89,10 +112,10 @@ const AI_READINGS_DATA = (function () {
   return { readings: [] };
 })();
 
-// 词汇目录：1-16 课全部词条（word/reading/meaning/lesson/partOfSpeech/tags）
+// 词汇目录：1-17 课全部词条（word/reading/meaning/lesson/partOfSpeech/tags）
 const vocabCatalog = MINNA_DATA.vocab || [];
 
-// 《大家的日语》第 1-16 课完整语法目录
+// 《大家的日语》第 1-17 课完整语法目录
 // grammarBank 只保存用户标记"模糊/不会"的弱项；语法题主来源从此目录穷举
 const grammarCatalogFallback = [
   { pattern: "Vてください", meaning: "请做某事", connection: "动词て形 + ください", lesson: 14, level: "N5", tags: ["minna", "lesson-14", "te-form", "request"] },
@@ -122,7 +145,7 @@ const grammarCatalogFallback = [
   { pattern: "もう Vました / まだ Vていません", meaning: "已经做了/还没做", connection: "もう + た形 / まだ + ていません", lesson: 7, level: "N5", tags: ["minna", "lesson-7", "aspect"] }
 ];
 
-// 优先使用完整目录（80 条覆盖 1-16 课），数据文件缺失时回退到内置精简版
+// 优先使用完整目录（87 条覆盖 1-17 课），数据文件缺失时回退到内置精简版
 const grammarCatalog = (MINNA_DATA.grammar && MINNA_DATA.grammar.length) ? MINNA_DATA.grammar : grammarCatalogFallback;
 
 const commuteSegments = [
@@ -2822,7 +2845,7 @@ const n1FoundationCards = [
   }
 ];
 
-// 阅读卡：由 1-16 课分课短文目录生成（原创短文，课次对齐）。
+// 阅读卡：由 1-17 课分课短文目录生成（原创短文，课次对齐）。
 // 若本地存在教材原文（data/minna/minna-readings.local.json，已被 .gitignore 排除），
 // 启动时会追加为 source="textbook" 的阅读卡并在排队时优先。
 function buildLessonReadingCard(item, index, source) {
@@ -2845,14 +2868,41 @@ function buildLessonReadingCard(item, index, source) {
   };
 }
 
-const japaneseReadingLabCards = (MINNA_DATA.readings || []).map(function (item, index) {
+// 一题一句：一张卡里塞 5 句时，答一次要读完整篇，量太大，而且 SRS 只能整篇打一个分。
+// 拆成"每句一张卡"后每句有独立进度，掌握状况按句判定，当天重复也能只重复没掌握的那句。
+function splitReadingCardBySentence(card) {
+  var sentences = Array.isArray(card.sentences) ? card.sentences : [];
+  if (card.type !== "reading" || sentences.length <= 1) return [card];
+  var title = card.passageTitle || String(card.prompt || "").replace(/^阅读短文：/, "").trim() || ("第" + (card.lesson || "") + "课");
+  return sentences.map(function (sentence, si) {
+    return Object.assign({}, card, {
+      id: card.id + "-s" + si,
+      passageId: card.id,
+      passageTitle: title,
+      sentenceNo: si + 1,
+      sentenceTotal: sentences.length,
+      prompt: "读句子：" + title + "（" + (si + 1) + "/" + sentences.length + "）",
+      sentences: [sentence]
+    });
+  });
+}
+
+function splitReadingCards(list) {
+  var out = [];
+  (list || []).forEach(function (card) {
+    splitReadingCardBySentence(card).forEach(function (item) { out.push(item); });
+  });
+  return out;
+}
+
+const japaneseReadingLabCards = splitReadingCards((MINNA_DATA.readings || []).map(function (item, index) {
   return buildLessonReadingCard(item, index, item.source || "builtin-lesson");
-});
+}));
 
 // AI生成短文卡：30篇，标记为 source="ai-generated"，使用 lessonRange 标记适用课次范围
-const aiReadingCards = (AI_READINGS_DATA.readings || []).map(function (item, index) {
+const aiReadingCards = splitReadingCards((AI_READINGS_DATA.readings || []).map(function (item, index) {
   return buildLessonReadingCard(item, index, "ai-generated");
-});
+}));
 
 // 教材原文（用户本机 OCR 结果，不进仓库）：启动时尝试加载
 let textbookReadingCards = [];
@@ -2863,11 +2913,11 @@ function loadLocalTextbookReadings() {
     .then(function (json) {
       var list = json && (json.readings || json);
       if (!Array.isArray(list) || !list.length) return;
-      textbookReadingCards = list
+      textbookReadingCards = splitReadingCards(list
         .filter(function (item) { return item && Array.isArray(item.sentences) && item.sentences.length; })
-        .map(function (item, index) { return buildLessonReadingCard(item, index, "textbook"); });
+        .map(function (item, index) { return buildLessonReadingCard(item, index, "textbook"); }));
       render();
-      showToast("已加载 " + textbookReadingCards.length + " 篇本地教材课文");
+      showToast("已加载 " + list.length + " 篇本地教材课文（拆成 " + textbookReadingCards.length + " 句）");
     })
     .catch(function () { /* 没有本地课文文件时静默跳过 */ });
 }
@@ -2883,13 +2933,20 @@ function defaultState() {
     settingsOpen: false,
     settingsSection: "ai",
     dailyGoal: 18,
+    // 每轮题量：manual = 用 manualSessionSize；auto = 按拆句后的实际刷题量推算
+    sessionSizeMode: "manual",
+    manualSessionSize: DEFAULT_MANUAL_SESSION_SIZE,
+    // 产出题占比：调高 = 更多"自己写"，调低 = 更多选择题
+    productionRatio: DEFAULT_PRODUCTION_RATIO,
     deepseekKey: "",
     activeCommuteSegment: "platform",
     commuteDirection: "morning",
+    // 注意：这里不要预置 lessonBaseline。它由 applyLessonBaseline 在迁移后盖章，
+    // 预置的话会和旧存档 merge 出"已经是最新基线"的假象，迁移就永远不触发了。
     // 课次掌握度模型：追踪每课词汇/语法/阅读/保持率
     lessonProgress: {
-      currentLesson: 16,
-      previewLesson: 17,
+      currentLesson: MINNA_LESSON_BASELINE,
+      previewLesson: MINNA_LESSON_BASELINE + 1,
       advanceMode: "auto",
       lastAdvanceAt: "",
       lastAdvanceReason: "",
@@ -2959,10 +3016,30 @@ function loadState() {
     if (!merged.vocabBank || !merged.vocabBank.length) {
       merged.vocabBank = migrateToVocabBank(merged);
     }
+    applyLessonBaseline(merged);
     return merged;
   } catch {
     return defaultState();
   }
+}
+
+// 手动课次基线迁移：只在 lessonBaseline 落后于 MINNA_LESSON_BASELINE 时推一次。
+// 只往前推、不往回退——已经靠掌握度自动推到更高课次的进度不会被拉回来。
+function applyLessonBaseline(data) {
+  if (data.lessonBaseline === MINNA_LESSON_BASELINE) return data;
+  data.lessonProgress = data.lessonProgress || {};
+  const current = Number(data.lessonProgress.currentLesson) || 0;
+  if (current < MINNA_LESSON_BASELINE) {
+    data.lessonProgress.currentLesson = MINNA_LESSON_BASELINE;
+    data.lessonProgress.previewLesson = MINNA_LESSON_BASELINE + 1;
+    data.lessonProgress.lastAdvanceAt = new Date().toISOString();
+    data.lessonProgress.lastAdvanceReason = "手动开课：直接开始第 " + MINNA_LESSON_BASELINE + " 课";
+    const lessons = data.lessonProgress.lessons || (data.lessonProgress.lessons = {});
+    const previous = lessons[String(current)];
+    if (previous) previous.status = "completed";
+  }
+  data.lessonBaseline = MINNA_LESSON_BASELINE;
+  return data;
 }
 
 // 从旧 jpVocab 和英语生词卡迁移到统一的 vocabBank
@@ -3138,7 +3215,7 @@ function prioritizeByProgress(cardsList, limit) {
   return due.concat(unseen, rest).slice(0, limit);
 }
 
-// 从 1-16 课词汇目录生成词汇题（选意思/看假名选词/看意思写词），只出已学课次
+// 从 1-17 课词汇目录生成词汇题（选意思/看假名选词/看意思写词），只出已学课次
 // 结果按课次门控缓存：render 会多次调用 allCards()，避免每次重建 ~1700 个对象
 var _vocabCatalogCardsCache = { key: "", cards: null };
 function buildVocabCardsFromCatalog() {
@@ -3322,8 +3399,14 @@ function allCards() {
     }
   } else if (state.activeTask === "grammar" && state.activeTrack === "japanese") {
     dynamicCards = prioritizeByProgress(buildGrammarCardsFromBank(), 120);
+  } else if (state.activeTrack === "japanese") {
+    // 阅读模式也要往池里放词汇/语法卡，否则智能队列的 阅读50%/词汇30%/语法20% 配比落不了地：
+    // 拆句后阅读卡有 200+ 张，静态词汇语法卡只有几十张，不补这一步队列会被阅读全占满。
+    dynamicCards = prioritizeByProgress(buildVocabCardsFromCatalog(), 60)
+      .concat(prioritizeByProgress(buildGrammarCardsFromBank(), 40));
   }
-  var pool = [...cards, ...japaneseReadingLabCards, ...aiReadingCards, ...textbookReadingCards, ...state.customCards, ...state.generatedCards, ...dynamicCards];
+  // 自定义/AI 生成里也可能有多句阅读卡，同样按句拆开，保证"一题一句"
+  var pool = [...cards, ...japaneseReadingLabCards, ...aiReadingCards, ...textbookReadingCards, ...splitReadingCards(state.customCards), ...splitReadingCards(state.generatedCards), ...dynamicCards];
   // 课次门控：还没学到的课的卡不进入题库（预览课除外）。cls 在整轮过滤里恒定，算一次即可。
   var cls = currentLessonState();
   var result = pool.filter(function (card) { return lessonGateOk(card.lesson, cls); });
@@ -3536,11 +3619,66 @@ function sessionSizeForEnergy(energy) {
   return 18;
 }
 
+// 拆句上线日期。这之前一张阅读卡包含 ~5 句，答一张的工作量约等于现在的 5 张，
+// 所以旧记录的"每天答了几题"和现在不是一个量纲，不能直接拿来推算题量。
+const READING_SPLIT_DATE = "2026-07-24";
+
+// 近 N 个练习日每天实际答了多少题（只统计有练习的日子，今天不算——今天还没结束）。
+// 用中位数而不是平均：偶尔一天猛刷 60 题不该把之后每天的题量都抬上去。
+function recentDailyVolume(trackId, days = 7) {
+  const today = todayKey();
+  const counts = {};
+  for (const item of state.history || []) {
+    if (!item || !item.date || item.date === today) continue;
+    if (item.date < READING_SPLIT_DATE) continue; // 拆句前的记录量纲不同，不参与推算
+    if (trackId && item.track !== trackId) continue;
+    counts[item.date] = (counts[item.date] || 0) + 1;
+  }
+  const recent = Object.keys(counts).sort().slice(-days).map((date) => counts[date]);
+  if (!recent.length) return { days: 0, median: 0, average: 0 };
+  const sorted = [...recent].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  const average = Math.round(recent.reduce((sum, value) => sum + value, 0) / recent.length);
+  return { days: recent.length, median, average };
+}
+
+// 每轮题量：默认用手动设定值（设置里可改）。
+// 切到"自动"时才按实际刷题量推算——但只看拆句之后的记录，量纲才对得上。
+function adaptiveSessionSize(trackId, energy) {
+  const base = sessionSizeForEnergy(energy);
+  if ((state.sessionSizeMode || "manual") === "manual") {
+    const manual = Number(state.manualSessionSize) || DEFAULT_MANUAL_SESSION_SIZE;
+    return { size: Math.max(4, Math.min(60, manual)), volume: recentDailyVolume(trackId), manual: true };
+  }
+  const volume = recentDailyVolume(trackId);
+  if (volume.days < 2) return { size: base, volume };
+  const factor = energy === "light" ? 0.6 : energy === "intense" ? 1.15 : 0.85;
+  // 一天的量通常分几段通勤刷完，所以单轮只取日均的一部分；再和固定档位平均一下做平滑
+  const fromVolume = volume.median * factor;
+  const size = Math.round(fromVolume * 0.7 + base * 0.3);
+  return { size: Math.max(8, Math.min(40, size)), volume };
+}
+
+// 每日目标：以近几天实际刷题量（全科目合计）为准，比日均高一点点，
+// 让进度条既够得着又有推着走的作用。数据不足 3 天时用 state.dailyGoal。
+function effectiveDailyGoal() {
+  // 手动模式：每日目标跟着手动题量走（一天大致一轮多一点）
+  if ((state.sessionSizeMode || "manual") === "manual") {
+    const manual = Number(state.manualSessionSize) || DEFAULT_MANUAL_SESSION_SIZE;
+    return Math.max(4, Math.min(80, manual));
+  }
+  const fallback = state.dailyGoal > 0 ? state.dailyGoal : defaultState().dailyGoal;
+  const volume = recentDailyVolume(null);
+  if (volume.days < 3) return fallback;
+  return Math.max(8, Math.min(60, Math.round(volume.median * 1.1)));
+}
+
 // ===== 课次推进模型 =====
 
 function currentLessonState() {
   var lp = state.lessonProgress || {};
-  var lesson = Number(lp.currentLesson || japaneseSourceProfile.currentLesson || 16);
+  var lesson = Number(lp.currentLesson || japaneseSourceProfile.currentLesson || MINNA_LESSON_BASELINE);
   var record = lp.lessons && lp.lessons[lesson] ? lp.lessons[lesson] : null;
   var previewLesson = Number(lp.previewLesson || lesson + 1);
   return {
@@ -3550,7 +3688,9 @@ function currentLessonState() {
     record: record,
     canPreview: Boolean(record ? record.canPreview : false),
     canAdvance: Boolean(record ? record.canAdvance : false),
-    blockers: record ? record.blockers : [],
+    // 记录可能来自别的设备或旧版本，字段不一定齐；这里兜底成数组，
+    // 否则调用方一律要写 cls.blockers?.length
+    blockers: record && Array.isArray(record.blockers) ? record.blockers : [],
     lastAdvanceAt: lp.lastAdvanceAt || "",
     lastAdvanceReason: lp.lastAdvanceReason || ""
   };
@@ -3563,7 +3703,7 @@ function ensureLessonRecord(lessonNum) {
   if (!state.lessonProgress.lessons[key]) {
     state.lessonProgress.lessons[key] = {
       lesson: lessonNum,
-      status: lessonNum <= (state.lessonProgress.currentLesson || 16) ? "active" : "locked",
+      status: lessonNum <= (state.lessonProgress.currentLesson || MINNA_LESSON_BASELINE) ? "active" : "locked",
       vocab: { total:0,seen:0,known:0,fuzzy:0,forgot:0,mastery:0 },
       grammar: { total:0,seen:0,known:0,fuzzy:0,forgot:0,mastery:0 },
       reading: { total:0,seen:0,good:0,hard:0,again:0,mastery:0 },
@@ -3645,10 +3785,17 @@ function maybeAdvanceLesson() {
   if (!rec || state.lessonProgress.advanceMode === "manual") return;
   var lesson = cls.lesson;
   rec.blockers = [];
+  // 样本量门槛：只答 1 道题就 100% 不算掌握。没有这道闸，一次答对就能推一课
+  // （实测曾靠 ~50 次答题从第 17 课连推到第 19 课）。
+  var vocabSamples = rec.vocab.known + rec.vocab.fuzzy + rec.vocab.forgot;
+  var grammarSamples = rec.grammar.known + rec.grammar.fuzzy + rec.grammar.forgot;
+  var enoughSamples = vocabSamples >= MIN_VOCAB_SAMPLES && grammarSamples >= MIN_GRAMMAR_SAMPLES;
+  if (vocabSamples < MIN_VOCAB_SAMPLES) rec.blockers.push("词汇练习太少(" + vocabSamples + "/" + MIN_VOCAB_SAMPLES + " 题)");
+  if (grammarSamples < MIN_GRAMMAR_SAMPLES) rec.blockers.push("语法练习太少(" + grammarSamples + "/" + MIN_GRAMMAR_SAMPLES + " 题)");
   if (rec.vocab.mastery < 0.80) rec.blockers.push("词汇掌握不足(" + Math.round(rec.vocab.mastery * 100) + "% / 需80%)");
   if (rec.grammar.mastery < 0.80) rec.blockers.push("语法掌握不足(" + Math.round(rec.grammar.mastery * 100) + "% / 需80%)");
   rec.canPreview = rec.vocab.mastery >= 0.50 || rec.grammar.mastery >= 0.50;
-  rec.canAdvance = rec.vocab.mastery >= 0.80 && rec.grammar.mastery >= 0.80;
+  rec.canAdvance = enoughSamples && rec.vocab.mastery >= 0.80 && rec.grammar.mastery >= 0.80;
   if (rec.canAdvance && lesson < 50) {
     state.lessonProgress.currentLesson = lesson + 1;
     state.lessonProgress.previewLesson = lesson + 2;
@@ -3706,6 +3853,34 @@ function pushBucket(target, bucket, seen, limit) {
   }
 }
 
+// 产出题 = 要自己写出来/排出来的题（input / arrange），再认题 = 选择题。
+// 数据显示产出题正确率比选择题低 40 个百分点，瓶颈在"写不出"而不是"认不出"，
+// 所以词汇/语法桶里按比例把产出题排到前面，让配额优先给产出题。
+// 不是全换成产出题：全是产出题会太挫败，选择题还承担着"认脸"的作用。
+function productionFirst(list, ratio) {
+  const share = typeof ratio === "number" ? ratio : (Number(state.productionRatio) || DEFAULT_PRODUCTION_RATIO);
+  if (share <= 0) return list;
+  const production = [];
+  const recognition = [];
+  for (const card of list) {
+    if (card.type === "input" || card.type === "arrange") production.push(card);
+    else recognition.push(card);
+  }
+  if (!production.length || !recognition.length) return list;
+  // 按 share 交错：share=0.5 → 产出/再认轮流；share=0.7 → 大约每 3 题里 2 题产出
+  const out = [];
+  let pi = 0;
+  let ri = 0;
+  let credit = 0;
+  while (pi < production.length || ri < recognition.length) {
+    credit += share;
+    if (credit >= 1 && pi < production.length) { out.push(production[pi++]); credit -= 1; }
+    else if (ri < recognition.length) out.push(recognition[ri++]);
+    else if (pi < production.length) out.push(production[pi++]);
+  }
+  return out;
+}
+
 function buildSmartQueue(pool, profile) {
   const seen = new Set();
   const queue = [];
@@ -3739,11 +3914,15 @@ function buildSmartQueue(pool, profile) {
     return card.module === "jp-vocab" || card.module === "en-vocab" || (card.tags || []).some(function(t) { return t === "vocab"; });
   });
   const dueWords = wordCards.filter(function(card) { return cardProgress(card.id) && isDue(card); });
+  // 没做过的词汇卡也要能进队列：课本目录题绝大多数是没做过的，
+  // 只收"到期"的话这个桶几乎是空的，配额会被后面的阅读卡吃掉。
+  const newWords = wordCards.filter(function(card) { return !cardProgress(card.id); });
   // 语法卡（日语专用）
   const grammarCards = isJapanese ? available.filter(function(card) {
     return card.module === "jp-grammar" || (card.tags || []).some(function(t) { return t === "grammar" || t === "sentence-pattern" || t === "conjugation"; });
   }) : [];
   const dueGrammar = grammarCards.filter(function(card) { return cardProgress(card.id) && isDue(card); });
+  const newGrammar = grammarCards.filter(function(card) { return !cardProgress(card.id); });
   // 弱项
   const weak = available
     .filter(function(card) { return weakScore(card) > 0 || profile.weakTags.some(function(tag) { return cardTags(card).includes(tag); }); })
@@ -3756,16 +3935,22 @@ function buildSmartQueue(pool, profile) {
   const remaining = shuffle(available);
   const slots = smartSlots(profile.sessionSize, profile.dailyLog, isJapanese, isEnglish, isLight);
 
-  // 阅读驱动排序：阅读卡 → 单词 → 语法（日语），阅读词汇 → 单词（英语）
-  pushBucket(queue, dueReading, seen, slots.dueReading);
+  // 阅读 → 单词 → 语法 三个核心桶排最前，保证 50%/30%/20% 的配比真的落得下去。
+  // 弱项优先改成"桶内排序"而不是单独占配额：弱项桶是全模块混排的，阅读卡数量占绝对优势
+  // （拆句后 200+ 张），让它单独占配额的话语法桶永远排不进 sessionSize 之内。
+  const weakFirst = function(list) {
+    return [...list].sort(function(a, b) { return weakScore(b) - weakScore(a); });
+  };
+  pushBucket(queue, weakFirst(dueReading), seen, slots.dueReading);
   pushBucket(queue, newReading, seen, slots.newReading);
-  pushBucket(queue, slow, seen, slots.slow);
-  pushBucket(queue, today, seen, slots.today);
-  pushBucket(queue, dueWords, seen, slots.dueWords);
-  pushBucket(queue, weak, seen, slots.weak);
+  pushBucket(queue, productionFirst(weakFirst(dueWords).concat(newWords)), seen, slots.dueWords);
   if (isJapanese) {
-    pushBucket(queue, dueGrammar, seen, slots.dueGrammar);
+    pushBucket(queue, productionFirst(weakFirst(dueGrammar).concat(newGrammar)), seen, slots.dueGrammar);
   }
+  // 以下是补充桶：核心桶没填满时才用得上
+  pushBucket(queue, today, seen, slots.today);
+  pushBucket(queue, slow, seen, slots.slow);
+  pushBucket(queue, weak, seen, slots.weak);
   pushBucket(queue, newContext, seen, slots.newContext);
   pushBucket(queue, remaining, seen, profile.sessionSize);
   return queue;
@@ -3842,7 +4027,9 @@ function learningProfile(trackId) {
     ? [...new Set([...(dailyLog.signals || []), ...extractLearningSignals(`${dailyLog.content || ""} ${dailyLog.difficulty || ""}`)])]
     : [];
   const preferredForm = dailyLog?.form || "context";
-  const sessionSize = sessionSizeForEnergy(dailyLog?.energy);
+  const sizing = adaptiveSessionSize(trackId, dailyLog?.energy);
+  const sessionSize = sizing.size;
+  const dailyVolume = sizing.volume;
   const n1Status = trackId === "japanese" ? japaneseN1Status() : null;
 
   for (const item of failed) {
@@ -3901,7 +4088,11 @@ function learningProfile(trackId) {
     dailyLog ? `今日内容：围绕「${shortText(dailyLog.content || dailyLog.difficulty || "今日记录", 22)}」出题` : "今日内容：还没有记录，先用课文长句建立语境",
     weakTags.length ? `弱项修补：优先 ${weakTags.join("、")}` : "弱项修补：先积累几次答题数据",
     `形式偏好：今天偏向 ${formLabel(preferredForm)}`,
-    `强度：${sessionSize} 题左右`,
+    sizing.manual
+      ? `强度：${sessionSize} 题（手动设定，可在设置→教材与进度里改）`
+      : dailyVolume.days >= 2
+        ? `强度：${sessionSize} 题左右（近 ${dailyVolume.days} 个练习日中位数 ${dailyVolume.median} 题，已按你的刷题量调整）`
+        : `强度：${sessionSize} 题左右（再练 ${2 - dailyVolume.days} 天就能按你的刷题量自动调整）`,
     slowModuleNames.length ? `节奏：${slowModuleNames.join("、")} 今天偏慢，已多排练习` : ""
   ].filter(Boolean);
   if (n1Status) {
@@ -3981,6 +4172,7 @@ function learningProfile(trackId) {
     dailySignals,
     preferredForm,
     sessionSize,
+    dailyVolume,
     slowModules,
     slowModuleNames,
     n1Status,
@@ -4067,7 +4259,7 @@ function render() {
   const track = getTrack();
   const stats = statsForTrack(track.id);
   const today = todayHistory();
-  const goal = state.dailyGoal > 0 ? state.dailyGoal : defaultState().dailyGoal;
+  const goal = effectiveDailyGoal();
   const goalDone = Math.min(today.length, goal);
   const goalPercent = Math.round((goalDone / goal) * 100);
   document.documentElement.style.setProperty("--track-color", track.color);
@@ -4078,6 +4270,7 @@ function render() {
     : "";
 
   app.innerHTML = `
+    ${renderUpdateBanner()}
     <aside class="sidebar">
       <div class="brand">
         <h1>三线学习训练器</h1>
@@ -4141,6 +4334,14 @@ function render() {
 }
 
 // ===== 设置窗口 =====
+function renderUpdateBanner() {
+  if (!isUpdateReady()) return "";
+  return '<div class="update-banner" role="status">' +
+    '<span>有新版本可用</span>' +
+    '<button class="plain-button primary" data-action="apply-update">立即更新</button>' +
+    '</div>';
+}
+
 function renderSettingsWindow() {
   var section = state.settingsSection || "ai";
   var sections = [
@@ -4235,6 +4436,9 @@ function renderTextbookSettings() {
   var p = japaneseSourceProfile;
   var cls = currentLessonState();
   var rec = cls.record;
+  var sizeMode = state.sessionSizeMode || "manual";
+  var manualSize = Number(state.manualSessionSize) || DEFAULT_MANUAL_SESSION_SIZE;
+  var productionRatio = Number(state.productionRatio) || DEFAULT_PRODUCTION_RATIO;
   return '<h3>教材与进度</h3>' +
     '<div class="settings-form">' +
     '<div class="chip-row"><span class="chip">' + p.displayName + '</span><span class="chip">第 ' + cls.lesson + ' 课</span><span class="chip">掌握 ' + Math.round(cls.mastery * 100) + '%</span>' +
@@ -4242,7 +4446,7 @@ function renderTextbookSettings() {
     '</div>' +
     (cls.lastAdvanceReason ? '<p class="daily-meta" style="color:var(--green)">' + cls.lastAdvanceReason + '</p>' : '') +
     (cls.blockers.length ? '<p class="daily-meta" style="color:var(--red)">障碍：' + cls.blockers.join('、') + '</p>' : '') +
-    '<p class="daily-meta">推进条件：总掌握度 ≥ 50%（达标方可预览）、≥ 65%（自动推进到下一课）。</p>' +
+    '<p class="daily-meta">推进条件：词汇和语法各练满 ' + MIN_VOCAB_SAMPLES + ' / ' + MIN_GRAMMAR_SAMPLES + ' 题，且两项掌握度都 ≥ 80%。词汇或语法 ≥ 50% 即可预览下一课。</p>' +
     (rec ? '<div style="margin-top:8px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:0.8rem">' +
     '<span>词汇 ' + Math.round(rec.vocab.mastery*100) + '%</span>' +
     '<span>语法 ' + Math.round(rec.grammar.mastery*100) + '%</span>' +
@@ -4254,7 +4458,29 @@ function renderTextbookSettings() {
     '<option value="auto"' + (state.lessonProgress?.advanceMode !== "manual" ? " selected" : "") + '>自动推进</option>' +
     '<option value="manual"' + (state.lessonProgress?.advanceMode === "manual" ? " selected" : "") + '>手动控制</option>' +
     '</select></label>' +
+    '<h3 style="margin-top:18px">每轮题量</h3>' +
+    '<div class="form-grid">' +
+    '<label>题量模式<select data-action="session-size-mode">' +
+    renderSelectOption("manual", "手动设定", sizeMode) +
+    renderSelectOption("auto", "按刷题量自动", sizeMode) +
+    '</select></label>' +
+    '<label>每轮题数<input type="number" data-action="manual-session-size" value="' + manualSize + '" min="4" max="60"' + (sizeMode === "manual" ? "" : " disabled") + ' /></label>' +
+    '</div>' +
+    '<p class="daily-meta">' + (sizeMode === "manual"
+      ? '当前每轮 ' + manualSize + ' 题，「今日完成」目标同步为 ' + effectiveDailyGoal() + ' 题。'
+      : '按最近 7 个练习日的中位数推算（只统计 ' + READING_SPLIT_DATE + ' 拆句之后的记录，之前一题含多句，量纲不同）。') + '</p>' +
+    '<label>产出题占比 <small>（词汇/语法题里"自己写答案"的比例）</small>' +
+    '<select data-action="production-ratio">' +
+    renderSelectOption("0.3", "30% · 以选择题为主", String(productionRatio)) +
+    renderSelectOption("0.6", "60% · 偏重产出（推荐）", String(productionRatio)) +
+    renderSelectOption("0.8", "80% · 主要靠回忆", String(productionRatio)) +
+    '</select></label>' +
+    '<p class="daily-meta">你的产出题正确率比选择题低约 40 个百分点，瓶颈在"写不出"而不是"认不出"，所以默认偏重产出题。觉得太挫败可以调低。</p>' +
     '<p class="daily-meta">教材索引状态：data/minna/ 示例文件已创建（待人工整理实际词库和语法库）。</p>' +
+    '<h3 style="margin-top:18px">应用版本</h3>' +
+    '<p class="daily-meta">当前版本 <b>' + APP_VERSION + '</b>' + (isUpdateReady() ? ' · <span style="color:var(--green)">有新版本待安装</span>' : '') + '</p>' +
+    '<button class="plain-button" data-action="' + (isUpdateReady() ? 'apply-update">立即更新' : 'check-update">检查更新') + '</button>' +
+    '<p class="daily-meta">手机主屏 App 会在每次切回前台时自动检查更新，发现新版本后顶部会出现横幅，点一下即可，<b>不需要删除图标重新添加</b>（删掉会连同步 token 一起丢）。</p>' +
     '</div>';
 }
 
@@ -4565,8 +4791,8 @@ function renderReadingLab(card) {
     <div class="reading-lab">
       <div class="reading-brief">
         <div>
-          <span>${escapeHtml(card.level || "N1 bridge")}${isAiGenerated ? ' <span class="badge-ai-gen">🤖 AI生成</span>' : ""}</span>
-          <strong>${escapeHtml(card.summary || "先读完整短文，再逐句拆解。")}</strong>
+          <span>${escapeHtml(card.level || "N1 bridge")}${card.sentenceTotal ? ` · ${escapeHtml(card.passageTitle || "")} 第 ${card.sentenceNo}/${card.sentenceTotal} 句` : ""}${isAiGenerated ? ' <span class="badge-ai-gen">🤖 AI生成</span>' : ""}</span>
+          <strong>${escapeHtml(card.summary || "读懂这一句：先看日文，再看假名和翻译。")}</strong>
         </div>
         <button class="plain-button" data-action="reading-ai-passage">按我的边界生成新短文</button>
       </div>
@@ -4584,7 +4810,7 @@ function renderReadingLab(card) {
       </article>
       <div class="reading-toolbar">
         <button class="plain-button" data-action="collect-selection">收藏选中文本</button>
-        <button class="plain-button" data-action="speak">朗读全文</button>
+        <button class="plain-button" data-action="speak">${sentences.length > 1 ? "朗读全文" : "朗读本句"}</button>
       </div>
       ${renderSelectionFloatingBar()}
       ${renderReadingChat(card, chat)}
@@ -4598,7 +4824,7 @@ function renderReadingSentence(card, sentence, index) {
   const words = s.words;
   return `
     <section class="reading-sentence" data-card-id="${escapeHtml(card.id)}" data-sentence-index="${index}">
-      <div class="sentence-index">${index + 1}</div>
+      <div class="sentence-index">${card.sentenceNo || index + 1}</div>
       <div class="sentence-body">
         <p class="sentence-jp">${escapeHtml(s.text)}</p>
         <p class="sentence-kana">${escapeHtml(s.reading)}</p>
@@ -4614,7 +4840,9 @@ function renderReadingSentence(card, sentence, index) {
                   sourceSentence: s.text,
                   sourceCardId: card.id
                 }));
-                return `<button class="grammar-chip" data-action="collect-grammar" data-grammar="${payload}" title="点击收藏语法点">${escapeHtml(item)}</button>`;
+                // 已收藏的语法点要常亮，否则点完看不出收没收藏过（和 word-chip 的 is-saved 一致）
+                var saved = findGrammarPoint(pattern);
+                return `<button class="grammar-chip${saved ? " is-saved" : ""}" data-action="collect-grammar" data-grammar="${payload}" title="${saved ? "已收藏，点击更新" : "点击收藏语法点"}">${saved ? "✓ " : ""}${escapeHtml(item)}</button>`;
               }).join("")}</div>`
             : ""
         }
@@ -5415,7 +5643,7 @@ function renderLearningOverviewPanel(stats) {
   var track = getTrack(state.activeTrack);
   var profile = learningProfile(track.id);
   var today = todayHistory().filter(function(item) { return item.track === track.id; });
-  var goal = state.dailyGoal > 0 ? state.dailyGoal : defaultState().dailyGoal;
+  var goal = effectiveDailyGoal();
   var goalDone = Math.min(today.length, goal);
   var currentTask = state.activeTask || "reading";
   var vocabItems = (state.vocabBank || []).filter(function(item) { return item.track === track.id; });
@@ -5756,6 +5984,32 @@ function bindEvents() {
         state.lessonProgress.advanceMode = event.target.value === "manual" ? "manual" : "auto";
         saveState();
       });
+    } else if (action === "session-size-mode") {
+      element.addEventListener("change", (event) => {
+        state.sessionSizeMode = event.target.value === "auto" ? "auto" : "manual";
+        saveState();
+        render();
+      });
+    } else if (action === "production-ratio") {
+      element.addEventListener("change", (event) => {
+        var v = parseFloat(event.target.value);
+        if (v >= 0 && v <= 1) {
+          state.productionRatio = v;
+          saveState();
+          render();
+          showToast("产出题占比已设为 " + Math.round(v * 100) + "%");
+        }
+      });
+    } else if (action === "manual-session-size") {
+      element.addEventListener("change", (event) => {
+        var v = parseInt(event.target.value, 10);
+        if (v >= 4 && v <= 60) {
+          state.manualSessionSize = v;
+          saveState();
+          render();
+          showToast("每轮题量已设为 " + v + " 题");
+        }
+      });
     } else if (action === "typed") {
       element.addEventListener("input", (event) => {
         state.typed = event.target.value;
@@ -5877,6 +6131,16 @@ function handleAction(event) {
 
   if (action === "rate") {
     rateCurrent(button.dataset.rating);
+    return;
+  }
+
+  if (action === "apply-update") {
+    applyAppUpdate();
+    return;
+  }
+
+  if (action === "check-update") {
+    checkForAppUpdate(true);
     return;
   }
 
@@ -6139,7 +6403,7 @@ function rateCurrent(rating) {
   const correct = card.type === "self" || card.type === "reading" ? rating !== "again" : Boolean(state.lastResult?.correct);
   // 学习速度：本张卡从出现到评分的耗时（毫秒），上限 5 分钟，避免把放下手机的发呆算进去。
   const ms = state.cardShownAt ? Math.min(Date.now() - state.cardShownAt, 5 * 60 * 1000) : null;
-  schedule(card, rating, correct);
+  const progress = schedule(card, rating, correct);
   maybeCreateReinforcement(card, rating, correct);
   state.history.push({
     date: todayKey(),
@@ -6151,10 +6415,14 @@ function rateCurrent(rating) {
     correct,
     ms
   });
-  state.history = state.history.slice(-400);
+  state.history = state.history.slice(-HISTORY_LIMIT);
   // 课次掌握度更新（仅日语）
   if (card.track === "japanese") updateLessonProgressFromCard(card, rating);
-  moveNext(true);
+  if (progress && progress.repeatToday) {
+    moveNext(false, progress.repeatGap);
+  } else {
+    moveNext(true);
+  }
   scheduleCloudSync();
 }
 
@@ -6217,6 +6485,30 @@ function buildReinforcementCard(card) {
   };
 }
 
+// 当天重复上限：同一张卡一天最多出 4 次，防止一道题把整轮队列占满。
+const SAME_DAY_MAX_REPS = 4;
+
+// 当天是否还要再出这张卡，以及隔多久／隔几题再出。
+// 判据是"掌握状况"：评分 + 累计正确率 + 见过的次数。已经稳的卡当天就不再重复。
+// 返回 { repeat, minutes, gap }：minutes 用于 SRS 到期时间，gap 用于本轮队列里插回的位置。
+function sameDayPlan(progress, rating) {
+  const reps = progress.reps || 0;
+  const accuracy = reps ? (progress.correct || 0) / reps : 0;
+  const todayReps = progress.todayReps || 0;
+  if (todayReps >= SAME_DAY_MAX_REPS) return { repeat: false, minutes: 0, gap: 0 };
+
+  if (rating === "again") return { repeat: true, minutes: 10, gap: 3 };
+  if (rating === "hard") {
+    // 记得吃力：当天一定再见一次，除非已经反复练了很多遍且正确率不低
+    if (reps <= 5 || accuracy < 0.75) return { repeat: true, minutes: 30, gap: 7 };
+    return { repeat: false, minutes: 0, gap: 0 };
+  }
+  // good：新卡当天巩固一次；正确率还没起来的也再来一次；稳定的直接进跨天队列
+  if (reps <= 1) return { repeat: true, minutes: 90, gap: 12 };
+  if (accuracy < 0.7) return { repeat: true, minutes: 120, gap: 15 };
+  return { repeat: false, minutes: 0, gap: 0 };
+}
+
 function schedule(card, rating, correct) {
   const previous = state.progress[card.id] || {
     interval: 0,
@@ -6231,33 +6523,58 @@ function schedule(card, rating, correct) {
   progress.reps += 1;
   progress.correct += correct ? 1 : 0;
   progress.wrong += correct ? 0 : 1;
+  // 当天出现次数：跨天自动归零
+  const today = todayKey();
+  progress.todayReps = progress.todayDate === today ? (progress.todayReps || 0) + 1 : 1;
+  progress.todayDate = today;
 
   if (rating === "again") {
     progress.interval = 0;
     progress.ease = Math.max(1.3, progress.ease - 0.2);
     progress.lapses += 1;
-    progress.due = Date.now() + 10 * 60 * 1000;
   } else if (rating === "hard") {
     progress.interval = Math.max(1, Math.round((progress.interval || 1) * 1.35));
     progress.ease = Math.max(1.3, progress.ease - 0.05);
-    progress.due = Date.now() + progress.interval * DAY;
   } else {
     progress.interval = progress.interval ? Math.round(progress.interval * progress.ease) : 1;
     progress.ease = Math.min(3.1, progress.ease + 0.05);
-    progress.due = Date.now() + progress.interval * DAY;
   }
+
+  // 没掌握的卡先在当天内重复，掌握了才按天数排下一次
+  const plan = sameDayPlan(progress, rating);
+  progress.repeatToday = plan.repeat;
+  progress.repeatGap = plan.gap;
+  // 不再当天重复时至少推到第二天（again 的 interval 是 0，兜到 1 天）
+  progress.due = plan.repeat
+    ? Date.now() + plan.minutes * 60 * 1000
+    : Date.now() + Math.max(1, progress.interval) * DAY;
 
   progress.lastSeen = Date.now();
   state.progress[card.id] = progress;
+  return progress;
 }
 
-function moveNext(removeCurrent) {
-  if (removeCurrent && state.currentId) {
-    state.queue = state.queue.filter((id) => id !== state.currentId);
-  } else if (state.currentId) {
-    const current = state.currentId;
-    state.queue = state.queue.filter((id) => id !== current);
-    state.queue.push(current);
+// 当天重复：把刚答过的卡插回队列靠后的位置（而不是直接扔掉），
+// gap 由 sameDayPlan 按掌握状况给出——越不熟，隔的题数越少。
+function requeueForToday(queue, cardId, gap) {
+  const rest = (queue || []).filter((id) => id !== cardId);
+  if (!rest.length) return rest; // 队列已空就不再当天重复，避免同一张卡连着出两次
+  const at = Math.min(Math.max(1, gap || 8), rest.length);
+  rest.splice(at, 0, cardId);
+  return rest;
+}
+
+function moveNext(removeCurrent, requeueGap) {
+  const current = state.currentId;
+  if (current) {
+    if (removeCurrent) {
+      state.queue = state.queue.filter((id) => id !== current);
+    } else if (typeof requeueGap === "number") {
+      state.queue = requeueForToday(state.queue, current, requeueGap);
+    } else {
+      state.queue = state.queue.filter((id) => id !== current);
+      state.queue.push(current);
+    }
   }
   state.currentId = state.queue[0] || null;
   resetAnswerState();
@@ -6269,7 +6586,11 @@ function moveNext(removeCurrent) {
 function speakCurrent() {
   const card = getCard();
   if (!card || !("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(card.speak || contextSpeakText(card.context) || card.prompt);
+  // 阅读卡要读日文句子本身：card.prompt 是中文标题（"读句子：病院で（1/5）"），拿它朗读会读出中文
+  const text = card.type === "reading"
+    ? readingCardText(card)
+    : (card.speak || contextSpeakText(card.context) || card.prompt);
+  const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = card.track === "japanese" ? "ja-JP" : "en-US";
   utterance.rate = card.track === "japanese" ? 0.86 : 0.92;
   window.speechSynthesis.cancel();
@@ -6488,6 +6809,24 @@ function findJpVocab(word) {
   return findJpVocabIn(state.vocabBank, state.jpVocab, word);
 }
 
+// 语法点查重：阅读卡里的 chip 文本是「pattern = 说明」，只取 = 前面的部分和语法银行比对。
+// 全角/半角空格在不同数据源里不统一，先归一化再比。
+function normalizeGrammarPattern(pattern) {
+  return String(pattern || "").split("=")[0].replace(/[\s　]+/g, "").trim();
+}
+
+function findGrammarPointIn(grammarBank, pattern) {
+  var key = normalizeGrammarPattern(pattern);
+  if (!key) return null;
+  return (grammarBank || []).find(function (item) {
+    return normalizeGrammarPattern(item && item.pattern) === key;
+  }) || null;
+}
+
+function findGrammarPoint(pattern) {
+  return findGrammarPointIn(state.grammarBank, pattern);
+}
+
 function normalizeJapaneseWord(word) {
   return String(word || "").trim().replace(/\s+/g, "");
 }
@@ -6642,7 +6981,7 @@ function maybeCreateJpVocabCard(item) {
 function collectGrammarPoint(raw) {
   if (!raw || !raw.pattern) return;
   state.grammarBank = state.grammarBank || [];
-  var existing = state.grammarBank.find(function(g) { return g.pattern === raw.pattern; });
+  var existing = findGrammarPointIn(state.grammarBank, raw.pattern);
   var now = new Date().toISOString();
   if (existing) {
     existing.meaning = existing.meaning || raw.meaning || "";
@@ -7117,7 +7456,7 @@ function mergeImportedState(incoming) {
   state.customCards = mergeById(state.customCards, incoming.customCards || []);
   state.generatedCards = mergeById(state.generatedCards, incoming.generatedCards || []).slice(-160);
   state.dailyLogs = mergeById(state.dailyLogs, incoming.dailyLogs || [], "updatedAt").slice(0, 120);
-  state.history = mergeHistory(state.history, incoming.history || []).slice(-600);
+  state.history = mergeHistory(state.history, incoming.history || []).slice(-HISTORY_LIMIT);
   state.analyses = { ...(state.analyses || {}), ...(incoming.analyses || {}) };
   state.diagnosis = { ...(state.diagnosis || {}), ...(incoming.diagnosis || {}) };
   state.jpVocab = mergeById(state.jpVocab || [], incoming.jpVocab || [], "updatedAt").slice(-300);
@@ -7125,7 +7464,11 @@ function mergeImportedState(incoming) {
   state.grammarBank = mergeById(state.grammarBank || [], incoming.grammarBank || [], "updatedAt").slice(-200);
   state.readingChat = { ...(state.readingChat || {}), ...(incoming.readingChat || {}) };
   state.dailyGoal = Number(incoming.dailyGoal || state.dailyGoal) || state.dailyGoal;
+  state.sessionSizeMode = incoming.sessionSizeMode || state.sessionSizeMode;
+  state.manualSessionSize = Number(incoming.manualSessionSize) || state.manualSessionSize;
+  state.productionRatio = Number(incoming.productionRatio) || state.productionRatio;
   state.activeCommuteSegment = incoming.activeCommuteSegment || state.activeCommuteSegment;
+  state.lessonProgress = mergeLessonProgress(state.lessonProgress, incoming.lessonProgress);
 }
 
 function mergeById(local, incoming, timeKey = "createdAt") {
@@ -7138,6 +7481,58 @@ function mergeById(local, incoming, timeKey = "createdAt") {
     }
   }
   return [...map.values()];
+}
+
+// 课次进度合并。以前这块完全不参与同步，手机和电脑各记各的，
+// 结果同一个人在三台设备上分别停在第 16/17/19 课。
+// 规则：currentLesson 取两边最大（只前进不后退，和 applyLessonBaseline 一致）；
+// 每课的掌握度记录按 updatedAt 取新的那份——不做累加，否则同一轮练习同步两次会被重复计数。
+function mergeLessonProgress(local, incoming) {
+  const base = local || {};
+  if (!incoming || typeof incoming !== "object") return base;
+  const lessons = { ...(base.lessons || {}) };
+  for (const [key, rec] of Object.entries(incoming.lessons || {})) {
+    const existing = lessons[key];
+    if (!existing || String(rec.updatedAt || "").localeCompare(String(existing.updatedAt || "")) > 0) {
+      lessons[key] = rec;
+    }
+  }
+  // 对方设备可能跑着旧版本，记录字段不一定齐（实测缺 blockers 会让总览页直接崩），
+  // 先补齐结构再重算派生掌握度，避免两边算法版本不同导致数值不一致。
+  const emptyVocab = { total: 0, seen: 0, known: 0, fuzzy: 0, forgot: 0, mastery: 0 };
+  const emptyReading = { total: 0, seen: 0, good: 0, hard: 0, again: 0, mastery: 0 };
+  for (const [key, rec] of Object.entries(lessons)) {
+    lessons[key] = {
+      lesson: Number(rec.lesson) || Number(key) || 0,
+      status: rec.status || "active",
+      overall: rec.overall || 0,
+      canPreview: Boolean(rec.canPreview),
+      canAdvance: Boolean(rec.canAdvance),
+      updatedAt: rec.updatedAt || "",
+      ...rec,
+      vocab: { ...emptyVocab, ...(rec.vocab || {}) },
+      grammar: { ...emptyVocab, ...(rec.grammar || {}) },
+      reading: { ...emptyReading, ...(rec.reading || {}) },
+      retention: { due: 0, overdue: 0, stable: 0, mastery: 0, ...(rec.retention || {}) },
+      blockers: Array.isArray(rec.blockers) ? rec.blockers : []
+    };
+    recalcLessonMastery(lessons[key]);
+  }
+
+  const localLesson = Number(base.currentLesson) || 0;
+  const incomingLesson = Number(incoming.currentLesson) || 0;
+  const currentLesson = Math.max(localLesson, incomingLesson) || localLesson || incomingLesson;
+  const newer = String(incoming.lastAdvanceAt || "").localeCompare(String(base.lastAdvanceAt || "")) > 0;
+  return {
+    ...base,
+    lessons,
+    currentLesson,
+    previewLesson: Math.max(Number(base.previewLesson) || 0, Number(incoming.previewLesson) || 0, currentLesson + 1),
+    // 推进模式是学习偏好，跟着最近一次改动走
+    advanceMode: newer ? (incoming.advanceMode || base.advanceMode) : (base.advanceMode || incoming.advanceMode),
+    lastAdvanceAt: newer ? incoming.lastAdvanceAt : base.lastAdvanceAt,
+    lastAdvanceReason: newer ? incoming.lastAdvanceReason : base.lastAdvanceReason
+  };
 }
 
 function mergeProgress(local, incoming) {
@@ -7549,7 +7944,7 @@ function renderGrammarPanel() {
   `;
 }
 
-// 课本词汇目录：按课浏览 1-16 课全部词汇，可标记忘了/掌握（写入 vocabBank 进入出题）
+// 课本词汇目录：按课浏览 1-17 课全部词汇，可标记忘了/掌握（写入 vocabBank 进入出题）
 function renderVocabCatalogPanel() {
   if (state.activeTrack !== "japanese" || !vocabCatalog.length) return "";
   var cls = currentLessonState();
@@ -7564,7 +7959,7 @@ function renderVocabCatalogPanel() {
   return `
     <section class="custom-panel vocab-panel" data-view="vocab">
       <h3 class="panel-title">课本词汇目录 <small>(共 ${vocabCatalog.length} 词 · 第 ${activeLesson} 课 ${words.length} 词)</small></h3>
-      <p class="daily-meta">《大家的日语》1-16 课词汇全部载入。点「忘了」加入生词本并优先出题。</p>
+      <p class="daily-meta">《大家的日语》1-17 课词汇全部载入。点「忘了」加入生词本并优先出题。</p>
       <div class="chip-row catalog-lesson-row">
         ${lessons.map(function (l) {
           return `<button class="plain-button lesson-chip${l === activeLesson ? " is-active" : ""}" data-action="catalog-lesson" data-lesson="${l}">${l}</button>`;
@@ -7592,7 +7987,7 @@ function renderVocabCatalogPanel() {
   `;
 }
 
-// 课本语法目录：1-16 课全部句型，可标记忘了/掌握（写入 grammarBank 进入出题）
+// 课本语法目录：1-17 课全部句型，可标记忘了/掌握（写入 grammarBank 进入出题）
 function renderGrammarCatalogPanel() {
   if (state.activeTrack !== "japanese" || !grammarCatalog.length) return "";
   var cls = currentLessonState();
@@ -7788,12 +8183,86 @@ function normalizeAiCard(raw, logOrTrack, index, sourceLogId) {
   return { ...base, answer, accepted };
 }
 
+// ===== 应用更新（iOS 主屏 App 免删除重装）=====
+// iPhone 上把网页「添加到主屏幕」后，App 是被"恢复"而不是重新打开的，页面可能好几天不重载，
+// 所以光靠 network-first 的 SW 发现不了新版本。这里做三件事：
+// ① 每次切回前台主动 registration.update() 查新版本；
+// ② 新版本装好后停在 waiting，页面弹条提示；
+// ③ 用户点「立即更新」→ 通知 SW skipWaiting → controllerchange 时自动刷新一次。
+// 这样就不用删图标重装，token 也不会跟着 localStorage 一起丢。
+let swRegistration = null;
+let updateReady = false;
+let updateReloading = false;
+
+function isUpdateReady() { return updateReady; }
+
+function markUpdateReady() {
+  if (updateReady) return;
+  updateReady = true;
+  render();
+}
+
+function checkForAppUpdate(manual) {
+  if (!swRegistration) {
+    if (manual) showToast("当前环境不支持自动更新，请手动刷新页面");
+    return;
+  }
+  if (manual) showToast("正在检查更新…");
+  swRegistration.update()
+    .then(function () {
+      if (!manual) return;
+      // update() 完成时新版本可能还在 installing，稍等一下再看结论
+      setTimeout(function () {
+        showToast(updateReady ? "发现新版本，点顶部横幅更新" : "已经是最新版本（" + APP_VERSION + "）");
+      }, 1200);
+    })
+    .catch(function () { if (manual) showToast("检查更新失败，请确认网络"); });
+}
+
+function applyAppUpdate() {
+  const waiting = swRegistration && swRegistration.waiting;
+  if (!waiting) { location.reload(); return; }
+  waiting.postMessage({ type: "SKIP_WAITING" });
+  showToast("正在更新…");
+  // 兜底：万一 controllerchange 没来，3 秒后强制刷新
+  setTimeout(function () { if (!updateReloading) { updateReloading = true; location.reload(); } }, 3000);
+}
+
 function registerServiceWorker() {
   if (typeof navigator === "undefined" || typeof location === "undefined") return;
   if (!("serviceWorker" in navigator)) return;
   const secureEnough = location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
   if (!secureEnough) return;
-  navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+
+  // updateViaCache:"none" —— SW 脚本本身绝不走 HTTP 缓存，否则可能一直拿到旧的 service-worker.js
+  navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" })
+    .then(function (registration) {
+      swRegistration = registration;
+      if (registration.waiting && navigator.serviceWorker.controller) markUpdateReady();
+      registration.addEventListener("updatefound", function () {
+        const installing = registration.installing;
+        if (!installing) return;
+        installing.addEventListener("statechange", function () {
+          // controller 存在说明这是"升级"而不是首次安装，首次安装不该弹更新提示
+          if (installing.state === "installed" && navigator.serviceWorker.controller) markUpdateReady();
+        });
+      });
+    })
+    .catch(function () { /* 不支持或注册失败时静默降级为普通网页 */ });
+
+  navigator.serviceWorker.addEventListener("controllerchange", function () {
+    if (updateReloading) return;
+    updateReloading = true;
+    location.reload();
+  });
+
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") checkForAppUpdate(false);
+    });
+  }
+  // 长时间开着不切走的情况，兜一次定时检查
+  setInterval(function () { checkForAppUpdate(false); }, 30 * 60 * 1000);
 }
 
 if (typeof document !== "undefined") {
@@ -7814,6 +8283,8 @@ if (typeof module !== "undefined" && module.exports) {
     mergeById,
     mergeProgress,
     mergeHistory,
+    mergeLessonProgress,
+    productionFirst,
     normalizeRatingForMastery,
     boundedMastery,
     recalcLessonMastery,
@@ -7828,6 +8299,19 @@ if (typeof module !== "undefined" && module.exports) {
     buildVocabCardsFromCatalog,
     buildGrammarCardsFromBank,
     buildLessonReadingCard,
+    splitReadingCardBySentence,
+    splitReadingCards,
+    normalizeGrammarPattern,
+    findGrammarPointIn,
+    sameDayPlan,
+    requeueForToday,
+    sessionSizeForEnergy,
+    defaultState,
+    ensureLessonRecord,
+    maybeAdvanceLesson,
+    currentLessonState,
+    applyLessonBaseline,
+    MINNA_LESSON_BASELINE,
     lessonGateOk,
     japaneseReadingLabCards,
     aiReadingCards

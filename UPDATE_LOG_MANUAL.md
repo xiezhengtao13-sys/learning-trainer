@@ -651,6 +651,8 @@
   - `updateLessonProgressFromCard(card, rating)`：答题后按 rating 更新 vocab/grammar/reading 计数
   - `recalcLessonMastery(rec)`：词汇40%+语法30%+阅读20%+保持10% 计算总掌握度
   - `maybeAdvanceLesson()`：overall≥65% 且无障碍 → 自动推进到下一课 + 写 reason
+    （⚠ 此推进条件已两次改写：07-08 第 24 次改为词汇/语法各 ≥80%；
+    07-24 第 30 次再加样本量下限，见该条）
   - 接入 `rateCurrent()`：每次评分后自动调用 updateLessonProgressFromCard
 - **AI 出题 bug 修复**：
   - `normalizeAiCard()`：log 对象缺 track 时从 `state.activeTrack` 兜底（不再因为缺 track 返回 null）
@@ -731,6 +733,8 @@
   - 新增 boundedMastery() 夹紧到 [0,1]
   - maybeAdvanceLesson() 拆分 canPreview(≥50%) / canAdvance(≥65%+blockers为空+reading.seen≥2)
   - 推进条件强制检查 blockers.length===0 和 reading.seen≥2
+    （⚠ 已过时：本条的加权惩罚公式和 65% 阈值在 07-08 第 24 次修改中被重写为
+    `known/(known+fuzzy+forgot)` + 各 ≥80%；07-24 第 30 次又补上样本量下限）
 - **P3 手动课次同步**：lesson-number handler 同步写 state.lessonProgress.currentLesson/previewLesson + ensureLessonRecord + japaneseSourceProfile + 写 reason + render
 - **P4 右侧总览数据源**：renderLearningOverviewPanel() 改读 currentLessonState()，显示真实掌握%+canAdvance/canPreview/blockers
 - **P5 AI出题lesson元数据**：generateAiCards() 构造完整 aiSource {track, lesson, lessonRange, previewLesson, signals}；normalizeAiCard() base 写入 lesson/lessonRange/preview 字段 + tags 含 lesson-N
@@ -944,6 +948,12 @@
 - 两端独立运行，互为备份
 - 测试：23 passed, 0 failed
 
+> ⚠ **本条结论是错的，已在 2026-07-24 第 30 次修改中纠正。**
+> 「两端独立运行，互为备份」不是设计，是 bug：`createGitHubGist()` 在 `gistId` 为空时会静默新建 Gist，
+> 所以每台只填了 token、没填 Gist ID 的设备都会另开一个云端。结果进度分裂成 3 个互不相通的 Gist
+> （`3a4f05e1` 83 条 / `bfff6c1f` 50 条 / `c80f0752` 10 条），既不是备份也无法合并，
+> 直到 07-24 才发现并合并成一份（权威 ID：`c80f075251422031816a8c400057ba93`）。
+
 ---
 
 ## 2026-07-13 当日工作总结
@@ -965,6 +975,10 @@
 - 日语约 2000 题（静态 78 + 短文 18 + 词汇 1691 + 语法 240），全程序约 2100 题
 - 手机端联网打开自动更新（SW network-first），更新标志：底部 4 个标签
 - 词汇/语法/短文全部分课，跟随课次推进自动扩大出题范围（17 课后数据待补）
+
+> ⚠ 已过时（2026-07-24 第 30 次修改）：第 17 课数据已补齐；短文改为按句拆卡；
+> 「联网打开自动更新」对 iOS 主屏 App 不成立——它是恢复而非重新打开，页面可能几天不重载，
+> 现已改为 waiting SW + 顶部横幅提示。
 
 ### 下一步建议
 - 手机上逐课过一遍生词目录，把不会的标「忘了」喂给出题
@@ -1001,6 +1015,133 @@
 - 短文共 48 篇（课文 18 + AI 30）、词汇 624、语法 80，全程序约 2200+ 题
 - 手机端联网打开自动更新（SW v10 network-first），AI 短文有独立徽章
 
+> ⚠ 已过时（2026-07-24 第 30 次修改）：现为短文 51 篇（课文 21 + AI 30）、词汇 661、语法 87；
+> 短文按句拆成 224 张单句卡；SW 升到 v12 并改为 waiting + 横幅更新流程。
+
 ### 下一步建议
 - 手机端验：短文阅读标签下遍历几张 AI 短文，确认徽章显示和内容质量
 - 后续可继续扩充 AI 短文数量或增加阅读理解选择题
+
+---
+
+## 2026-07-24 第 30 次修改
+
+### 本次目标
+- 修「收藏语法后不常亮」；一题只出一句；补第 17 课；当天按掌握状况重复；题量可控
+- 解决 iPhone 主屏 App 每次更新都要删图标重装的问题
+- 合并散落在 3 个 Gist 里的学习进度，并按合并后的数据重做弱项分析
+
+### 实际改动文件
+- `app.js`
+- `data/minna-lessons.js`
+- `service-worker.js`
+- `styles.css`
+- `test.js`
+- `README.md`
+- `UPDATE_LOG_MANUAL.md`（含对旧条目的过时标注，见文末）
+
+### 完成内容
+
+**① 收藏语法点不常亮（bug）**
+- `.grammar-chip.is-saved` 的 CSS 一直存在，但 JS 从来没加过这个 class——`word-chip` 有 `is-saved` 判断，`grammar-chip` 漏了
+- 新增 `normalizeGrammarPattern()` / `findGrammarPointIn()` / `findGrammarPoint()`：只取 `=` 前面的句型，归一化全角半角空格后比对
+- 已收藏的 chip 加 `is-saved` + ✓ 前缀，title 变「已收藏，点击更新」；`collectGrammarPoint` 改用同一套查重，重复点击变成更新而不是新增
+
+**② 一题一句**
+- 新增 `splitReadingCardBySentence()` / `splitReadingCards()`：把每篇短文按句拆成独立卡，带 `passageId` / `sentenceNo` / `sentenceTotal`
+- 内置 21 篇 → 104 张单句卡，AI 30 篇 → 120 张；本地教材 OCR 和 AI 现场生成的短文走同一条路
+- 每句有独立 SRS 进度，掌握状况可以按句判定
+- 顺带修复：阅读卡的「朗读」按钮原本读 `card.prompt`（中文标题），改为读日文句子本身
+
+**③ 第 17 课（ない形）**
+- 词汇 37 条、语法 7 条（ない形变形 / Vないでください / Vなければなりません / Vなくてもいいです / Nは宾语提示 / Nまでに / どうしましたか）、短文 3 篇（病院で / 会社の規則 / 出張の準備）
+- 短文只用第 17 课及之前的词汇语法，逐词核对过前 16 课词表
+- 新增 `MINNA_LESSON_BASELINE` 常量 + `applyLessonBaseline()`：loadState 时把存档推到基线课次，只推一次（`lessonBaseline` 标记去重）、只前进不后退，历史与复习进度全保留
+
+**④ 当天按掌握状况重复**
+- 新增 `sameDayPlan(progress, rating)`：按 评分 + 累计正确率 + 见过次数 决定当天是否再出、隔几题、多久到期
+  - 忘了 → 10 分钟后，隔 3 题；模糊（≤5 次或正确率<75%）→ 30 分钟，隔 7 题
+  - 会了（首次）→ 90 分钟，隔 12 题；会了（正确率<70%）→ 120 分钟，隔 15 题；已稳定 → 按天数排
+- `SAME_DAY_MAX_REPS = 4` 封顶，超过推到第二天
+- `moveNext(remove, requeueGap)` + `requeueForToday()`：答完不再直接丢弃，而是插回队列靠后位置；队列只剩这一张时不重复，避免连着出两次
+
+**⑤ 题量可控**
+- `state.sessionSizeMode`（manual/auto）+ `manualSessionSize`，设置→教材与进度里可改，默认手动 20 题
+- 自动模式取最近 7 个**练习日**的中位数；新增 `READING_SPLIT_DATE = "2026-07-24"`，只统计拆句之后的记录——拆句前一题含 ~5 句，答一题约等于现在的 5 题，两边量纲不同，混算会把题量严重低估（实测会被压到下限 8 题）
+- 「今日完成」目标在手动模式下跟着题量走
+
+**⑥ 课次推进缺样本量下限（bug）**
+- `maybeAdvanceLesson()` 只看掌握度 ≥80%，没有样本量闸：答对 1 道词汇题 = 1/1 = 100% = 达标推进
+- 实测后果：某台设备靠约 50 次答题从第 17 课连推到第 19 课（第 17 课词汇样本仅 1 题、第 18 课仅 3 题）
+- 新增 `MIN_VOCAB_SAMPLES = 15` / `MIN_GRAMMAR_SAMPLES = 8`，未达标时 blockers 显示「词汇练习太少(1/15 题)」
+- 同时修正设置页文案：原写「总掌握度 ≥50% / ≥65%」，与代码里的「词汇和语法各 ≥80%」对不上
+
+**⑦ 队列被阅读题占满（本次拆句引入的回归）**
+- 拆句让阅读卡从 51 张涨到 236 张，压垮了 阅读50%/词汇30%/语法20% 的配比：实测 20 题里 18 阅读 / 1 词汇 / **0 语法**
+- 三个原因，全部修复：
+  - 阅读模式下根本不往池里放动态词汇/语法卡（只在词汇/语法任务下生成），池里只有 15+24 张静态卡对 236 张阅读卡
+  - `dueWords` / `dueGrammar` 只收「做过且到期」的卡，而课本目录题绝大多数没做过 → 桶几乎是空的，配额被阅读吃掉。新增 `newWords` / `newGrammar`
+  - 「弱项优先」原本单独占配额，而弱项桶是全模块混排的，阅读卡数量碾压 → 改为**桶内排序**（`weakFirst`），三个核心模块桶排最前
+- 修复后：阅读 9-10 / 词汇 5-7 / 语法 4-5（目标 10/6/4）；8 题小队列降级为 3/3/2
+
+**⑧ 偏重产出题**
+- 合并后数据显示：产出题（input/arrange）正确率 46%，选择题 87%，差 41 个百分点，瓶颈在「写不出」不在「认不出」
+- 新增 `productionFirst(list, ratio)`：按比例把产出题交错排到配额前面；`state.productionRatio` 默认 0.6，设置里可选 30%/60%/80%
+- 效果：每轮词汇语法题里的 input 从 ~1 道提到 5 道
+- **供给上限**：语法目录 3 种题型全是选择题，一道产出题都没有；词汇每词 3 种里只有 1 种是 input。所以实际占比卡在 ~40%，到不了 60%
+
+**⑨ iOS 主屏 App 免删除重装更新**
+- 根因：iOS 主屏 App 有独立于 Safari 的存储容器（删图标会连同步 token 一起丢），且它是「恢复」而不是重新打开，页面可能好几天不重载；旧 `registerServiceWorker()` 只 register 完就不管了，既不查更新也不提示
+- SW `install` 里**去掉无条件 `skipWaiting()`**：新版本先停在 waiting（原来新 SW 直接激活，页面这边根本没有「待更新」状态可检测）
+- SW 新增 `message` 监听处理 `SKIP_WAITING`
+- 页面侧：`updateViaCache: "none"` 注册；`visibilitychange` 切回前台主动 `registration.update()` + 30 分钟定时兜底；检测到 waiting 后显示顶部横幅；点「立即更新」→ postMessage → `controllerchange` 自动刷新（3 秒兜底强制刷新）
+- 首次安装不弹提示（判据：`navigator.serviceWorker.controller` 存在才算升级）
+- 设置→教材与进度→应用版本：显示 `APP_VERSION`、可手动检查更新
+- SW 缓存版本 v10 → v12
+
+**⑩ 课次进度参与云同步**
+- 以前 `mergeImportedState()` 完全不碰 `lessonProgress`，三台设备分别停在第 16/17/19 课
+- 新增 `mergeLessonProgress()`：`currentLesson` 取两边最大（只前进不后退），每课记录按 `updatedAt` 取新的那份——**不做累加**，否则同一轮练习同步两次会被重复计数；合并后重算派生掌握度
+- **测试时当场崩了一次**：对方设备传来的记录缺 `blockers` 字段，`currentLessonState()` 直接透传 undefined，总览页读 `.length` 就炸。以前 lessonProgress 从不同步，记录都是本地 `ensureLessonRecord` 建的永远有这个字段——是开启同步才让这条路可达。两处都修：读取处兜底成数组，合并时补齐整个记录结构
+
+**⑪ 答题历史上限**
+- `HISTORY_LIMIT = 1200`（原本本地 400、云端合并 600，两个数不一致）；按每天 20 题算约能存 2 个月
+
+**⑫ 三个 Gist 合并**
+- 发现进度分裂在 3 个 Gist 里（详见对 07-08 第 27 次条目的过时标注）
+- 用 app 自己的 `mergeHistory`/`mergeProgress`/`mergeById` 并集语义合并，断言零丢失后写回 `c80f075251422031816a8c400057ba93`
+- 合并结果：143 条答题（原来只看到 83）、76 张卡进度、19 生词 + 12 语法收藏、11 个练习日
+- 写入前清空 `deepseekKey` 和 `gitSync.token`，并校验 payload 无 `ghp_/gho_` 字样
+
+### 未完成/暂缓
+- **语法产出题型缺失**：语法目录没有 input 类题型，导致产出题占比到不了设定值。要真正补齐得加变形填空类题目（正对最弱的 `conjugation` 43%）
+- 数据保存安全（deviceId/revision/本地恢复点）仍未做
+
+### 测试结果
+- `node test.js`：**54 passed, 0 failed**（35 → 54，新增 19 项）
+  - 新增覆盖：拆句、语法查重与常亮、`sameDayPlan`、`requeueForToday`、课次基线迁移、样本量推进闸、`mergeLessonProgress`（含缺字段兜底）、`productionFirst`
+- 浏览器实测（Chrome，本地 8787）：
+  - 语法 chip 点击后 `is-saved` 生效、背景转绿、重新 render 和读 localStorage 后仍常亮，二次点击是更新不是新增
+  - 拆句后队列里无多句阅读卡，卡头显示「第 n/N 句」
+  - 真实点评分按钮：答「忘了」后卡片插回第 3 位并在 3 题后重新出现，队列长度不变
+  - 用真实存档验证课次迁移：16 → 17，83 条历史 + 61 张卡进度一条没丢
+  - **完整走通更新流程**：改 SW 模拟发版 → `update()` 检测到 → 进 waiting → 横幅出现 → 点「立即更新」→ 页面真的重载（标记消失、横幅消失、waiting 清空、新 SW activated）
+
+### 当前状态
+- 课次基线：**第 17 课**；短文 51 篇（课文 21 + AI 30）→ 拆成 224 张单句卡；词汇 661、语法 87
+- 每轮题量：手动 20 题，配比 阅读 ~10 / 词汇 ~6 / 语法 ~4，其中产出题 5 道左右
+- 同步：单一 Gist `c80f0752…`，课次进度也参与同步
+- 手机更新：切回前台自动检查 → 横幅 → 一键更新，**不再需要删图标重装**
+
+### 对旧日志条目的处理
+本次没有删除任何历史条目（完成内容是当时的事实记录），但给 4 处已被推翻或已过时的表述加了 `⚠` 标注：
+- **07-08 第 27 次「当前状态」**：「两端独立运行，互为备份」结论是错的——那不是设计而是 `createGitHubGist()` 在 `gistId` 为空时静默新建云端的 bug，实际造成进度分裂成 3 个互不相通的 Gist
+- **07-13 第 28 次「当前状态」**：第 17 课数据已补齐；「联网打开自动更新」对 iOS 主屏 App 不成立
+- **07-14 第 29 次「当前状态」**：短文/词汇/语法数量已变；SW 已升到 v12 且换了更新流程
+- **07-07 第 23 次 / 07-08 第 24 次**：`maybeAdvanceLesson` 的 65% 阈值和加权惩罚公式已两次改写，标注指向最新规则
+
+### 下一步建议
+- 手机上把 Gist ID 填成 `c80f075251422031816a8c400057ba93`，确认课次进度和历史都同步过来
+- 第 17 课优先啃 ない形变形——`jp-grammar-007`「把『行きます』变成 ない形」是全库最烂的三张卡之一，0 对 2 错
+- 先清逾期卡再上新课，避免重演 06-30 那天（一天 45 题、正确率掉到 67%）
+- 考虑给语法目录加产出题型，补上 ⑧ 的供给缺口
