@@ -459,6 +459,31 @@ test("语法出题器：三种题型、id 唯一", () => {
   assert.ok(suffixes.has("-m") && suffixes.has("-c") && suffixes.has("-e"), "应包含意思/接续/例句三种题型");
 });
 
+test("词汇出题器：产出题（自己写）占到一半", () => {
+  const cards = buildVocabCardsFromCatalog();
+  const input = cards.filter((c) => c.type === "input");
+  const share = input.length / cards.length;
+  assert.ok(share >= 0.45, `词汇产出题应 >= 45%，实际 ${Math.round(share * 100)}%`);
+  // 两种产出题各司其职：-w 给中文求词，-r 给汉字求读音
+  const meaningToWord = cards.filter((c) => c.id.endsWith("-w"));
+  const kanjiToReading = cards.filter((c) => c.id.endsWith("-r"));
+  assert.ok(meaningToWord.length >= 500, `看中文写日语应 >= 500，实际 ${meaningToWord.length}`);
+  assert.ok(kanjiToReading.length >= 400, `看汉字写读音应 >= 400，实际 ${kanjiToReading.length}`);
+  kanjiToReading.forEach((c) => {
+    assert.strictEqual(c.type, "input");
+    assert.ok(c.prompt.includes("怎么读"), `题面应问读音：${c.prompt}`);
+    assert.ok(c.tags.includes("kanji-reading"), `应带 kanji-reading 标签：${c.prompt}`);
+    assert.ok(c.tags.includes("production"), `应带 production 标签：${c.prompt}`);
+    assert.notStrictEqual(c.answer, c.prompt, "答案不该等于题面");
+  });
+  // 只有汉字词才出读音题（假名词写法就是读音，出了没意义）
+  const kanaOnly = vocabCatalog.filter((w) => w.reading === w.word).map((w) => w.word);
+  const bad = kanjiToReading.filter((c) => kanaOnly.some((w) => c.prompt.includes("「" + w + "」怎么读")));
+  assert.deepStrictEqual(bad, [], "假名词不该出读音题");
+  // 判分：accepted 必须含正确答案
+  assert.ok(input.every((c) => (c.accepted || []).includes(c.answer)), "所有产出题的 accepted 都要含正确答案");
+});
+
 test("语法目录：变形题数据结构完整", () => {
   const withDrills = grammarCatalog.filter((g) => g.drills && g.drills.length);
   assert.ok(withDrills.length >= 8, `应有 >= 8 条语法带变形题，实际 ${withDrills.length}`);
