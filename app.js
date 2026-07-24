@@ -63,8 +63,8 @@ const MINNA_LESSON_BASELINE = 17;
 // 版本号：显示在侧栏和「设置 → 关于」，用来确认手机上跑的到底是哪一版。
 // 格式 日期.当日序号——同一天发两次也能区分开（光看日期分不出来）。
 // 发版时改这里，同时把 service-worker.js 的 CACHE_NAME +1。
-const APP_VERSION = "2026-07-24.1";
-const APP_RELEASE_NOTE = "一题一句 · 第17课 · 当天重复 · iOS 免重装更新";
+const APP_VERSION = "2026-07-24.2";
+const APP_RELEASE_NOTE = "语法变形题（て形/ない形产出练习）· 版本号可见";
 
 // 每轮默认题数。defaultState() 在模块初始化时就会跑，所以这个常量必须声明在它之前。
 const DEFAULT_MANUAL_SESSION_SIZE = 20;
@@ -3386,6 +3386,26 @@ function buildGrammarCardsFromBank() {
         });
       }
     }
+    // 4) 变形/套用产出题（需要 drills 数据）。前三种全是选择题，只能练"认得出"；
+    //    这一种要求自己写出答案，练的是"写得出"——正是弱项所在。
+    (item.drills || []).forEach(function (drill, di) {
+      var from = drill[0];
+      var to = drill[1];
+      var note = drill[2] || "";
+      if (!from || !to) return;
+      var label = item.drillLabel || item.pattern;
+      result.push({
+        id: id + "-d" + di, track: "japanese", module: "jp-grammar", type: "input", dynamic: true,
+        prompt: "把「" + from + "」改成" + label + "。",
+        subprompt: item.drillHint || "",
+        answer: to,
+        // 汉字写法和纯假名写法都算对：手机上未必想切输入法打汉字
+        accepted: [to],
+        explanation: from + " → " + to + (note ? "（" + note + "）" : "") + " · 语法点：" + item.pattern + " · " + lessonNote,
+        tags: tags.concat(["production", "recall", "conjugation"]),
+        context: context
+      });
+    });
   });
   return result;
 }
@@ -3891,6 +3911,18 @@ function productionFirst(list, ratio) {
     else if (pi < production.length) out.push(production[pi++]);
   }
   return out;
+}
+
+// 当前课次范围内有多少道语法变形题（要自己写答案的）。
+// 这里报绝对条数而不是百分比：百分比在不同环节差很多（生成器原始 16%、
+// 截断进池后 37%、最终队列 38%），报哪个都容易误导；条数是稳定且可核对的。
+function grammarDrillCount() {
+  var cls = currentLessonState();
+  var count = 0;
+  grammarCatalog.forEach(function (item) {
+    if (lessonGateOk(item.lesson, cls)) count += (item.drills || []).length;
+  });
+  return count;
 }
 
 function buildSmartQueue(pool, profile) {
@@ -4519,13 +4551,14 @@ function renderTextbookSettings() {
     '<p class="daily-meta">' + (sizeMode === "manual"
       ? '当前每轮 ' + manualSize + ' 题，「今日完成」目标同步为 ' + effectiveDailyGoal() + ' 题。'
       : '按最近 7 个练习日的中位数推算（只统计 ' + READING_SPLIT_DATE + ' 拆句之后的记录，之前一题含多句，量纲不同）。') + '</p>' +
-    '<label>产出题占比 <small>（词汇/语法题里"自己写答案"的比例）</small>' +
+    '<label>产出题优先度 <small>（"自己写答案"的题排多靠前）</small>' +
     '<select data-action="production-ratio">' +
-    renderSelectOption("0.3", "30% · 以选择题为主", String(productionRatio)) +
-    renderSelectOption("0.6", "60% · 偏重产出（推荐）", String(productionRatio)) +
-    renderSelectOption("0.8", "80% · 主要靠回忆", String(productionRatio)) +
+    renderSelectOption("0.3", "低 · 以选择题为主", String(productionRatio)) +
+    renderSelectOption("0.6", "中 · 偏重产出（推荐）", String(productionRatio)) +
+    renderSelectOption("0.8", "高 · 尽量都写", String(productionRatio)) +
     '</select></label>' +
     '<p class="daily-meta">你的产出题正确率比选择题低约 40 个百分点，瓶颈在"写不出"而不是"认不出"，所以默认偏重产出题。觉得太挫败可以调低。</p>' +
+    '<p class="daily-meta">这是<b>排序优先度不是硬配额</b>：题库里产出题本身有限（词汇每词 3 种题型只有 1 种要写；语法变形题当前课次范围内共 ' + grammarDrillCount() + ' 道），实际占比大约落在 40-50%，调到"高"也超不过供给上限。</p>' +
     '<p class="daily-meta">教材索引状态：data/minna/ 示例文件已创建（待人工整理实际词库和语法库）。</p>' +
     '<p class="daily-meta">版本号和更新入口在「设置 → 关于」。</p>' +
     '</div>';
