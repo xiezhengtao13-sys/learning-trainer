@@ -63,8 +63,8 @@ const MINNA_LESSON_BASELINE = 17;
 // 版本号：显示在侧栏和「设置 → 关于」，用来确认手机上跑的到底是哪一版。
 // 格式 日期.当日序号——同一天发两次也能区分开（光看日期分不出来）。
 // 发版时改这里，同时把 service-worker.js 的 CACHE_NAME +1。
-const APP_VERSION = "2026-07-24.2";
-const APP_RELEASE_NOTE = "语法变形题（て形/ない形产出练习）· 版本号可见";
+const APP_VERSION = "2026-07-24.3";
+const APP_RELEASE_NOTE = "词汇读音产出题 · 语法变形题 · 产出练习补齐";
 
 // 每轮默认题数。defaultState() 在模块初始化时就会跑，所以这个常量必须声明在它之前。
 const DEFAULT_MANUAL_SESSION_SIZE = 20;
@@ -3282,8 +3282,21 @@ function buildVocabCardsFromCatalog() {
       answer: item.word,
       accepted: item.reading !== item.word ? [item.word, item.reading] : [item.word],
       explanation: item.meaning + " = " + item.word + (item.reading !== item.word ? "（" + item.reading + "）" : "") + " · " + lessonNote,
-      tags: baseTags.concat(["recall"])
+      tags: baseTags.concat(["production", "recall"])
     });
+    // 4. 看汉字写读音（只对汉字词）。和第 3 种不同：那道给中文求词，
+    //    这道给汉字求读音，练的是"这个汉字念什么"——kanji-reading 是实测偏弱的标签，
+    //    而且原来只有选择题（第 2 种）能练它，写不出来照样能选对。
+    if (item.reading && item.reading !== item.word) {
+      result.push({
+        id: id + "-r", track: "japanese", module: "jp-vocab", type: "input", dynamic: true,
+        prompt: "「" + item.word + "」怎么读？（写假名）",
+        answer: item.reading,
+        accepted: [item.reading],
+        explanation: item.word + " → " + item.reading + "（" + item.meaning + "）· " + lessonNote,
+        tags: baseTags.concat(["kanji-reading", "production", "recall"])
+      });
+    }
   });
   _vocabCatalogCardsCache = { key: cacheKey, cards: result };
   return result;
@@ -4558,7 +4571,7 @@ function renderTextbookSettings() {
     renderSelectOption("0.8", "高 · 尽量都写", String(productionRatio)) +
     '</select></label>' +
     '<p class="daily-meta">你的产出题正确率比选择题低约 40 个百分点，瓶颈在"写不出"而不是"认不出"，所以默认偏重产出题。觉得太挫败可以调低。</p>' +
-    '<p class="daily-meta">这是<b>排序优先度不是硬配额</b>：题库里产出题本身有限（词汇每词 3 种题型只有 1 种要写；语法变形题当前课次范围内共 ' + grammarDrillCount() + ' 道），实际占比大约落在 40-50%，调到"高"也超不过供给上限。</p>' +
+    '<p class="daily-meta">这是<b>排序优先度不是硬配额</b>，实际占比还受题库供给限制：词汇题里产出题约占一半（看中文写词 + 看汉字写读音），语法变形题当前课次范围内共 ' + grammarDrillCount() + ' 道。实测词汇约 51%、语法约 41%，调到"高"也超不过供给上限。</p>' +
     '<p class="daily-meta">教材索引状态：data/minna/ 示例文件已创建（待人工整理实际词库和语法库）。</p>' +
     '<p class="daily-meta">版本号和更新入口在「设置 → 关于」。</p>' +
     '</div>';
