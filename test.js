@@ -459,6 +459,42 @@ test("语法出题器：三种题型、id 唯一", () => {
   assert.ok(suffixes.has("-m") && suffixes.has("-c") && suffixes.has("-e"), "应包含意思/接续/例句三种题型");
 });
 
+test("语法目录：变形题数据结构完整", () => {
+  const withDrills = grammarCatalog.filter((g) => g.drills && g.drills.length);
+  assert.ok(withDrills.length >= 8, `应有 >= 8 条语法带变形题，实际 ${withDrills.length}`);
+  let total = 0;
+  withDrills.forEach((g) => {
+    assert.ok(g.drillLabel, `${g.pattern} 缺 drillLabel（题面要说清改成什么形）`);
+    g.drills.forEach((d) => {
+      assert.ok(Array.isArray(d) && d[0] && d[1], `${g.pattern} 的变形题格式应为 [题面, 答案, 说明?]`);
+      assert.notStrictEqual(d[0], d[1], `${g.pattern}: 题面和答案不该相同（${d[0]}）`);
+      total += 1;
+    });
+  });
+  assert.ok(total >= 40, `变形题总数应 >= 40，实际 ${total}`);
+  // 两个变形规则（て形/ない形）覆盖三类动词
+  const nai = grammarCatalog.find((g) => g.pattern === "動詞ない形");
+  assert.ok(nai && nai.drills.length >= 12, "ない形应有足够的变形练习");
+  const naiAnswers = nai.drills.map((d) => d[1]);
+  assert.ok(naiAnswers.includes("買わない"), "应覆盖 い→わ 这个特例");
+  assert.ok(naiAnswers.includes("来ない"), "应覆盖 Ⅲ类");
+});
+
+test("语法出题器：产出题（自己写答案）真的被生成出来", () => {
+  const cards = buildGrammarCardsFromBank();
+  const input = cards.filter((c) => c.type === "input");
+  assert.ok(input.length >= 20, `语法产出题应 >= 20，实际 ${input.length}（原本语法题全是选择题）`);
+  const ids = new Set(cards.map((c) => c.id));
+  assert.strictEqual(ids.size, cards.length, "加了变形题后 id 仍应唯一");
+  input.forEach((c) => {
+    assert.ok(c.prompt.includes("改成"), `变形题题面应说明改成什么：${c.prompt}`);
+    assert.ok(c.answer && typeof c.answer === "string", `变形题要有答案：${c.prompt}`);
+    assert.ok((c.accepted || []).includes(c.answer), `accepted 应含正确答案：${c.prompt}`);
+    assert.ok(c.tags.includes("production"), `变形题应带 production 标签：${c.prompt}`);
+    assert.ok(c.tags.includes("conjugation"), `变形题应带 conjugation 标签：${c.prompt}`);
+  });
+});
+
 test("lessonGateOk：超过当前课的卡不进题库", () => {
   assert.strictEqual(lessonGateOk(1), true, "第 1 课应可用");
   assert.strictEqual(lessonGateOk(17), true, "当前课（第17课）应可用");

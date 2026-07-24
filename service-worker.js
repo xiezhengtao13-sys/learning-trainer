@@ -1,7 +1,7 @@
 // 改动 app.js / styles.css / 数据文件后把这里 +1，旧缓存会在 activate 时清掉。
 // 页面会通过 GET_VERSION 消息读这个值显示在「设置 → 关于」，所以它是权威的缓存版本号，
 // 不要在 app.js 里另外抄一份常量（会漂移）。
-const CACHE_NAME = "triad-learning-trainer-v13";
+const CACHE_NAME = "triad-learning-trainer-v14";
 const CORE_ASSETS = [
   "./",
   "./index.html",
