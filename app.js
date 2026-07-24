@@ -60,8 +60,11 @@ const japaneseN1Phases = [
 // 不受掌握度门控影响；N → N+1 的自动推进仍然由 maybeAdvanceLesson 的 80% 规则管。
 const MINNA_LESSON_BASELINE = 17;
 
-// 版本号：显示在设置里，方便确认手机上的更新到底生效了没有。发版时改这里。
-const APP_VERSION = "2026-07-24";
+// 版本号：显示在侧栏和「设置 → 关于」，用来确认手机上跑的到底是哪一版。
+// 格式 日期.当日序号——同一天发两次也能区分开（光看日期分不出来）。
+// 发版时改这里，同时把 service-worker.js 的 CACHE_NAME +1。
+const APP_VERSION = "2026-07-24.1";
+const APP_RELEASE_NOTE = "一题一句 · 第17课 · 当天重复 · iOS 免重装更新";
 
 // 每轮默认题数。defaultState() 在模块初始化时就会跑，所以这个常量必须声明在它之前。
 const DEFAULT_MANUAL_SESSION_SIZE = 20;
@@ -2848,10 +2851,19 @@ const n1FoundationCards = [
 // 阅读卡：由 1-17 课分课短文目录生成（原创短文，课次对齐）。
 // 若本地存在教材原文（data/minna/minna-readings.local.json，已被 .gitignore 排除），
 // 启动时会追加为 source="textbook" 的阅读卡并在排队时优先。
+// 各来源必须有各自的 id 前缀。曾经只有 textbook 带 "tb-"，ai-generated 和内置课文共用同一
+// 命名空间，结果 lesson+index 撞上时 id 完全相同（实测 8 张），两张不同的卡共用一份 SRS 进度、
+// getCard() 还只能取到第一张。
+function readingIdPrefix(source) {
+  if (source === "textbook") return "tb-";
+  if (source === "ai-generated") return "ai-";
+  return "";
+}
+
 function buildLessonReadingCard(item, index, source) {
   var lesson = Number(item.lesson) || 0;
   return {
-    id: "jp-reading-minna-" + (source === "textbook" ? "tb-" : "") + lesson + "-" + index,
+    id: "jp-reading-minna-" + readingIdPrefix(source) + lesson + "-" + index,
     track: "japanese",
     module: "jp-reading",
     type: "reading",
@@ -4275,6 +4287,7 @@ function render() {
       <div class="brand">
         <h1>三线学习训练器</h1>
         <p>智能模式 · 短文阅读驱动</p>
+        <button class="brand-version${isUpdateReady() ? " has-update" : ""}" data-action="open-settings" data-section="about" title="点击查看版本详情和更新">v${escapeHtml(APP_VERSION)}${isUpdateReady() ? ' · 有新版本' : ""}</button>
       </div>
       <nav class="track-list" aria-label="学习科目">
         ${tracks.map(renderTrackButton).join("")}
@@ -4350,7 +4363,8 @@ function renderSettingsWindow() {
     { id: "textbook", label: "教材与进度", icon: "📚" },
     { id: "data", label: "数据管理", icon: "💾" },
     { id: "custom", label: "自定义题", icon: "✏" },
-    { id: "privacy", label: "隐私安全", icon: "🔒" }
+    { id: "privacy", label: "隐私安全", icon: "🔒" },
+    { id: "about", label: "关于", icon: "ℹ" }
   ];
   return '<div class="settings-overlay" data-action="close-settings"><div class="settings-window" onclick="event.stopPropagation()">' +
     '<div class="settings-head"><h2>设置</h2><button class="icon-button" data-action="close-settings" aria-label="关闭">✕</button></div>' +
@@ -4372,8 +4386,44 @@ function renderSettingsSection(section) {
     case "data": return renderDataSettings();
     case "custom": return renderCustomSettings();
     case "privacy": return renderPrivacySettings();
+    case "about": return renderAboutSettings();
     default: return "";
   }
+}
+
+// 「关于」：一屏说清"我现在跑的是哪一版、数据装了多少、更新怎么走"
+function renderAboutSettings() {
+  var cls = currentLessonState();
+  var readingPassages = new Set(japaneseReadingLabCards.concat(aiReadingCards).map(function (c) { return c.passageId || c.id; })).size;
+  var standalone = typeof navigator !== "undefined" &&
+    (navigator.standalone === true || (typeof matchMedia === "function" && matchMedia("(display-mode: standalone)").matches));
+  var gistId = String((state.gitSync && state.gitSync.gistId) || "");
+  var rows = [
+    ["应用版本", APP_VERSION],
+    ["本版内容", APP_RELEASE_NOTE],
+    ["缓存版本", getSwCacheName() || "（未启用 Service Worker）"],
+    ["运行方式", standalone ? "主屏 App（独立窗口）" : "浏览器标签页"],
+    ["上次检查更新", getLastUpdateCheckAt() || "本次启动尚未检查"],
+    ["当前课次", "第 " + cls.lesson + " 课（预览第 " + cls.previewLesson + " 课）"],
+    ["题库规模", vocabCatalog.length + " 词 · " + grammarCatalog.length + " 条语法 · " + readingPassages + " 篇短文（拆成 " + (japaneseReadingLabCards.length + aiReadingCards.length) + " 张单句卡）"],
+    ["每轮题量", (state.sessionSizeMode === "auto" ? "自动" : "手动") + " " + (learningProfile(state.activeTrack).sessionSize) + " 题"],
+    ["答题记录", (state.history || []).length + " 条（上限 " + HISTORY_LIMIT + "）"],
+    ["同步云端", gistId ? "Gist " + escapeHtml(gistId.slice(0, 8)) + "…" : "未配置"]
+  ];
+  return '<h3>关于</h3>' +
+    '<div class="settings-form">' +
+    '<div class="about-grid">' +
+    rows.map(function (row) {
+      return '<span class="about-key">' + escapeHtml(row[0]) + '</span><span class="about-val">' + escapeHtml(String(row[1])) + '</span>';
+    }).join("") +
+    '</div>' +
+    (isUpdateReady()
+      ? '<p class="daily-meta" style="color:var(--green)"><b>有新版本待安装</b>，点下面按钮或页面顶部横幅即可更新。</p>' +
+        '<button class="plain-button primary full-button" data-action="apply-update">立即更新</button>'
+      : '<button class="plain-button full-button" data-action="check-update">检查更新</button>') +
+    '<p class="daily-meta" style="margin-top:10px"><b>怎么确认更新成功：</b>更新后回到这里看「应用版本」是否变成了新的日期序号。版本号格式是 <code>日期.当日第几版</code>，同一天发两次也能区分。</p>' +
+    '<p class="daily-meta">手机主屏 App 每次切回前台会自动检查更新，发现新版本时页面顶部出现横幅，点一下即可完成。<b>不需要删除图标重新添加</b>——删掉会连同步 token 一起丢。</p>' +
+    '</div>';
 }
 
 function renderAiSettings() {
@@ -4477,10 +4527,7 @@ function renderTextbookSettings() {
     '</select></label>' +
     '<p class="daily-meta">你的产出题正确率比选择题低约 40 个百分点，瓶颈在"写不出"而不是"认不出"，所以默认偏重产出题。觉得太挫败可以调低。</p>' +
     '<p class="daily-meta">教材索引状态：data/minna/ 示例文件已创建（待人工整理实际词库和语法库）。</p>' +
-    '<h3 style="margin-top:18px">应用版本</h3>' +
-    '<p class="daily-meta">当前版本 <b>' + APP_VERSION + '</b>' + (isUpdateReady() ? ' · <span style="color:var(--green)">有新版本待安装</span>' : '') + '</p>' +
-    '<button class="plain-button" data-action="' + (isUpdateReady() ? 'apply-update">立即更新' : 'check-update">检查更新') + '</button>' +
-    '<p class="daily-meta">手机主屏 App 会在每次切回前台时自动检查更新，发现新版本后顶部会出现横幅，点一下即可，<b>不需要删除图标重新添加</b>（删掉会连同步 token 一起丢）。</p>' +
+    '<p class="daily-meta">版本号和更新入口在「设置 → 关于」。</p>' +
     '</div>';
 }
 
@@ -8193,8 +8240,27 @@ function normalizeAiCard(raw, logOrTrack, index, sourceLogId) {
 let swRegistration = null;
 let updateReady = false;
 let updateReloading = false;
+let swCacheName = "";        // 从 SW 问来的真实缓存版本，不在这边抄常量以免漂移
+let lastUpdateCheckAt = "";  // 上次检查更新的时间，显示在「关于」里
 
 function isUpdateReady() { return updateReady; }
+function getSwCacheName() { return swCacheName; }
+function getLastUpdateCheckAt() { return lastUpdateCheckAt; }
+
+// 向当前控制页面的 SW 要缓存版本号。用 MessageChannel 单次问答，避免全局 message 监听。
+function requestSwCacheName() {
+  if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
+  const worker = navigator.serviceWorker.controller;
+  if (!worker || typeof MessageChannel === "undefined") return;
+  try {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = function (event) {
+      const name = event.data && event.data.cacheName;
+      if (name && name !== swCacheName) { swCacheName = name; render(); }
+    };
+    worker.postMessage({ type: "GET_VERSION" }, [channel.port2]);
+  } catch (e) { /* 老浏览器不支持就不显示缓存版本，不影响其他功能 */ }
+}
 
 function markUpdateReady() {
   if (updateReady) return;
@@ -8210,7 +8276,9 @@ function checkForAppUpdate(manual) {
   if (manual) showToast("正在检查更新…");
   swRegistration.update()
     .then(function () {
-      if (!manual) return;
+      lastUpdateCheckAt = new Date().toLocaleString();
+      requestSwCacheName();
+      if (!manual) { render(); return; }
       // update() 完成时新版本可能还在 installing，稍等一下再看结论
       setTimeout(function () {
         showToast(updateReady ? "发现新版本，点顶部横幅更新" : "已经是最新版本（" + APP_VERSION + "）");
@@ -8238,6 +8306,8 @@ function registerServiceWorker() {
   navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" })
     .then(function (registration) {
       swRegistration = registration;
+      lastUpdateCheckAt = new Date().toLocaleString();
+      requestSwCacheName();
       if (registration.waiting && navigator.serviceWorker.controller) markUpdateReady();
       registration.addEventListener("updatefound", function () {
         const installing = registration.installing;
