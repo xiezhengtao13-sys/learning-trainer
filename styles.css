@@ -651,6 +651,48 @@ button {
   background: #eff8f2;
 }
 
+/* 侧栏版本号：常驻显示，点一下直接跳到「设置 → 关于」 */
+.brand-version {
+  margin-top: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.brand-version:hover { border-color: var(--track-color); color: var(--text); }
+
+.brand-version.has-update {
+  border-color: var(--green);
+  color: var(--green);
+  font-weight: 700;
+}
+
+/* 「关于」页的键值表 */
+.about-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.82rem;
+}
+
+.about-key { color: var(--muted); white-space: nowrap; }
+.about-val { color: var(--text); font-weight: 600; word-break: break-word; }
+
+@media (max-width: 680px) {
+  .about-grid { grid-template-columns: 1fr; gap: 2px; }
+  .about-key { margin-top: 8px; }
+  .about-key:first-child { margin-top: 0; }
+}
+
 /* 新版本提示条：固定在最顶部，iOS 主屏 App 要避开刘海安全区 */
 .update-banner {
   position: fixed;

@@ -397,6 +397,22 @@ test("AI生成短文：30 篇拆成单句卡且字段完整", () => {
   });
 });
 
+test("阅读卡 id 跨来源全局唯一（内置课文 vs AI 短文曾经撞 id）", () => {
+  // 回归测试：buildLessonReadingCard 原本只给 textbook 加前缀，
+  // ai-generated 和 builtin-lesson 共用命名空间，lesson+index 相同就撞车，
+  // 后果是两张不同的句子卡共用一份 SRS 进度。
+  const all = japaneseReadingLabCards.concat(aiReadingCards);
+  const ids = all.map((c) => c.id);
+  const dup = [...new Set(ids.filter((x, i) => ids.indexOf(x) !== i))];
+  assert.deepStrictEqual(dup, [], `阅读卡 id 不该重复，重复的有：${dup.slice(0, 5).join(", ")}`);
+  // 篇数也要对得上：21 篇内置 + 30 篇 AI
+  const passages = new Set(all.map((c) => c.passageId || c.id));
+  const builtin = new Set(japaneseReadingLabCards.map((c) => c.passageId || c.id));
+  const ai = new Set(aiReadingCards.map((c) => c.passageId || c.id));
+  assert.strictEqual(passages.size, builtin.size + ai.size, "两个来源的短文不该互相吞掉");
+  assert.ok(aiReadingCards.every((c) => c.id.startsWith("jp-reading-minna-ai-")), "AI 短文卡应有 ai- 前缀");
+});
+
 test("AI生成短文：覆盖 1-5 / 6-10 / 11-16 三个课次范围", function () {
   var ranges = { beginner: 0, intermediate: 0, advanced: 0 };
   var seen = new Set();
