@@ -1,4 +1,5 @@
-const CACHE_NAME = "triad-learning-trainer-v10";
+// 改动 app.js / styles.css / 数据文件后把这里 +1，旧缓存会在 activate 时清掉。
+const CACHE_NAME = "triad-learning-trainer-v12";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -13,7 +14,13 @@ const CORE_ASSETS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS)));
-  self.skipWaiting();
+  // 这里不调 skipWaiting：新版本先停在 waiting 状态，页面检测到后提示用户，
+  // 用户点「立即更新」才发 SKIP_WAITING 激活。iOS 主屏 App 靠这条路更新，
+  // 不用再删除图标重新添加（删了会连 localStorage 里的 token 一起没）。
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -61,3 +68,4 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(cacheFirst(request));
 });
+
